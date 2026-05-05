@@ -30,8 +30,9 @@ export async function POST(req: NextRequest) {
       SpeechSDK.AudioStreamFormat.getWaveFormatPCM(16000, 16, 1)
     );
 
-    pushStream.write(buffer);
-    pushStream.close();
+    const uint8Array = new Uint8Array(buffer);
+    pushStream.write(uint8Array.buffer);
+    pushStream.close();git add .
 
     const audioConfig = SpeechSDK.AudioConfig.fromStreamInput(pushStream);
 
