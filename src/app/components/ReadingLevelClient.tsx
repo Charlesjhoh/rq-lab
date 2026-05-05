@@ -138,7 +138,7 @@ They liked stories about adventures and dogs.`;
       const pushStream = SpeechSDK.AudioInputStream.createPushStream(
         SpeechSDK.AudioStreamFormat.getWaveFormatPCM(16000, 16, 1)
       );
-      pushStream.write(pcm);
+      pushStream.write(pcm.buffer as ArrayBuffer);
       pushStream.close();
 
       const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(
