@@ -9,6 +9,7 @@ function ClientPart() {
   const searchParams = useSearchParams();
   const [result, setResult] = useState<any>(null);
   const [books, setBooks] = useState<any[]>([]);
+  const resultId = searchParams.get("result_id");
 
 
   const getRecommendations = (books: any[], user: any) => {
