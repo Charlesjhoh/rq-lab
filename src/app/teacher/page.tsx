@@ -26,7 +26,20 @@ const [students, setStudents] = useState<Student[]>([]);
 const [keyword, setKeyword] = useState("");
 const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
-const [allResults, setAllResults] = useState([]);
+type ReadingResult = {
+  id: string;
+  wpm: number;
+  accuracy: number;
+  comprehension: number;
+};
+
+type StudentWithResults = {
+  id: string;
+  student_name: string;
+  reading_results: ReadingResult[];
+};
+
+const [allResults, setAllResults] = useState<StudentWithResults[]>([]);
 useEffect(() => {
   const load = async () => {
     const { data } = await supabase
