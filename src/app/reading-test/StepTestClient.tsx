@@ -392,7 +392,9 @@ function getBookGroups(ar: number) {
   // ---------------- 발음 평가 ----------------
   const pcmBytes = await blobToPCM16kMono(audioBlobParam);
   const formData = new FormData();
-  formData.append("audio", new Blob([pcmBytes.buffer]));
+  const safeBuffer = new Uint8Array(pcmBytes);
+
+  formData.append("audio", new Blob([safeBuffer]));
   formData.append("text", refText);
   formData.append("user_id", user.id);
 
