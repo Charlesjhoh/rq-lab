@@ -461,7 +461,9 @@ try {
 }
 
 const recallForm = new FormData();
-recallForm.append("audio", new Blob([recallPCM]));
+const safePCM = new Uint8Array(recallPCM);
+
+recallForm.append("audio", new Blob([safePCM]));
 recallForm.append("text", refText);
 recallForm.append("user_id", user.id);
 
