@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
     const uint8Array = new Uint8Array(buffer);
     pushStream.write(uint8Array.buffer);
-    pushStream.close();git add .
+    pushStream.close();
 
     const audioConfig = SpeechSDK.AudioConfig.fromStreamInput(pushStream);
 
