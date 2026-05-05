@@ -25,12 +25,9 @@ export async function POST(req: NextRequest) {
 
     // 🔥 Push Stream 생성
     const pushStream = SpeechSDK.AudioInputStream.createPushStream();
-    pushStream.write(
-    buffer.buffer.slice(
-    buffer.byteOffset,
-    buffer.byteOffset + buffer.byteLength
-  ) as ArrayBuffer
-);
+    
+const uint8Array = new Uint8Array(buffer);
+pushStream.write(uint8Array.buffer);
     pushStream.close();
 
     const audioConfig = SpeechSDK.AudioConfig.fromStreamInput(pushStream);
