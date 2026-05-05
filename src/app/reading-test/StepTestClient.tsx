@@ -634,12 +634,16 @@ const { data: profile } = await supabase
   .single();
 
   console.log("student_id:", profile?.student_id);
+  if (!profile) {
+  console.error("profile 없음");
+  return;
+}
   // ---------------- DB 저장 ----------------
 await supabase.from("reading_results").insert([
   {
     user_id: user.id,
     profile_id: profileId,
-    student_id: profile.student_id,
+    student_id: profile?.student_id,
     wpm: safeWpm,
     accuracy: safeAccuracy,
     comprehension: comprehensionScore,
