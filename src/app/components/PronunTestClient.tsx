@@ -72,7 +72,7 @@ export default function PronunTestClient() {
       const pushStream = SpeechSDK.AudioInputStream.createPushStream(
         SpeechSDK.AudioStreamFormat.getWaveFormatPCM(16000, 16, 1)
       );
-      pushStream.write(pcmBytes);
+      pushStream.write(pcmBytes.buffer as ArrayBuffer);
       pushStream.close();
 
       const audioConfig = SpeechSDK.AudioConfig.fromStreamInput(pushStream);
