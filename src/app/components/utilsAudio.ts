@@ -9,7 +9,7 @@ export async function blobToPCM16kMono(blob: Blob): Promise<Uint8Array> {
   console.log("🔥 decode 시작");
   console.log("🔥 decode 시작");
 
-let decoded;
+let decoded: AudioBuffer;
 
 try {
   decoded = await Promise.race([
@@ -20,14 +20,13 @@ try {
         (err) => reject(err)
       );
     }),
-    new Promise((_, reject) =>
+    new Promise<AudioBuffer>((_, reject) =>
       setTimeout(() => reject(new Error("decode timeout")), 3000)
     ),
   ]);
 } catch (e) {
   console.error("🔥 decode 실패 → fallback", e);
 
-  // 👉 fallback: 그냥 raw buffer 반환
   return new Uint8Array(arrayBuf);
 }
 
