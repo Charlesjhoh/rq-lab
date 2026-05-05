@@ -1,103 +1,176 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase-client";
+
+
+export default function HomePage() {
+    const router = useRouter();
+
+  const [showForm, setShowForm] = useState(false);
+  const [parentName, setParentName] = useState("");
+  const [studentName, setStudentName] = useState("");
+  const [birth, setBirth] = useState("");
+
+
+  useEffect(() => {
+  const loadUserProfile = async () => {
+    const { data } = await supabase.auth.getUser();
+    const user = data.user;
+
+    if (!user) return;
+
+    // 👉 profiles 테이블에서 정보 가져오기
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("parent_name, student_name, birth")
+      .eq("id", user.id)
+      .single();
+
+    if (profile) {
+      setParentName(profile.parent_name || "");
+      setStudentName(profile.student_name || "");
+      setBirth(profile.birth || "");
+    }
+  };
+
+  loadUserProfile();
+}, []);
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div style={{ padding: 40, maxWidth: 600, margin: "0 auto" }}>
+      <h1>📘 Reading App</h1>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+      <h2 style={{ marginTop: 20 }}>
+        AI가 아이의 영어 원서 읽기 수준을 분석해드립니다
+      </h2>
+
+      <div style={{ marginTop: 20, background: "#f5f5f5", padding: 16 }}>
+        <b>📢 베타 테스트 안내</b>
+        <p>현재 무료로 리딩 진단 테스트를 제공하고 있습니다.</p>
+        <p>테스트 결과를 기반으로 맞춤 도서와 학습 방향을 제안합니다.</p>
+        <p style={{ fontSize: 12, color: "#888" }}>
+          ※ 일부 기능은 테스트 단계로 제한될 수 있습니다
+        </p>
+      </div>
+
+      <div style={{ marginTop: 30 }}>
+        <button
+            onClick={async () => {
+              const {
+                data: { user },
+              } = await supabase.auth.getUser();
+
+              if (!user) {
+                router.push("/login");
+                return;
+              }
+
+              setShowForm(true); // 🔥 여기 핵심
+            }}
+          style={{
+            padding: "12px 20px",
+            fontSize: 16,
+            cursor: "pointer",
+          }}
+        >
+          👉 무료 테스트 시작하기
+        </button>
+      </div>
+        {showForm && (
+          <div style={{ marginTop: 20 }}>
+            <input
+              placeholder="학부모 이름"
+              value={parentName}
+              onChange={(e) => setParentName(e.target.value)}
+              style={{ display: "block", marginBottom: 10, width: "100%" }}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+            <input
+              placeholder="학생 이름"
+              value={studentName}
+              onChange={(e) => setStudentName(e.target.value)}
+              style={{ display: "block", marginBottom: 10, width: "100%" }}
+            />
+
+            <input
+              placeholder="생년월일 (예: 2015-03-21)"
+              value={birth}
+              onChange={(e) => setBirth(e.target.value)}
+              style={{ display: "block", marginBottom: 10, width: "100%" }}
+            />
+
+            <button
+            onClick={async () => {
+              const {
+                data: { user },
+              } = await supabase.auth.getUser();
+
+              // 🔥 여기서 바로 차단
+              if (!user) {
+                alert("로그인 후 이용해주세요");
+                router.push("/login");
+                return;
+              }
+
+              // 그 다음에 입력값 체크
+              if (!parentName || !studentName || !birth) {
+                alert("모든 정보를 입력해주세요");
+                return;
+              }
+
+  // 그 다음 DB
+
+              // 3️⃣ DB 저장
+              const { data, error } = await supabase
+                .from("profiles")
+                .upsert(
+                  {
+                    id: user.id,
+                    student_name: studentName,
+                    parent_name: parentName,
+                    birth: birth,
+                    role: "student",
+                  },
+                  {
+                    onConflict: "id",
+                  }
+                )
+                .select()
+                .single();
+
+
+              // 🔥 여기서 바로 체크
+              if (error) {
+                console.error("❌ DB 에러:", error);
+                alert("저장 실패");
+                return;
+              }
+console.log("error:", error);
+              if (!data) {
+                console.error("❌ data 없음");
+                alert("데이터 없음");
+                return;
+              }
+if (!data) {
+  alert("데이터 없음");
+  return;
+}
+
+//const profile = data[0];
+
+              // 🔥 여기서만 사용
+              router.push(`/reading-test?profile_id=${data.id}`);
+            }}
+            >
+              시작하기
+            </button>
+          </div>
+        )}
+      <p style={{ marginTop: 20, fontSize: 13, color: "#666" }}>
+        ※ 결과 저장 및 리포트 확인을 위해 로그인이 필요합니다
+      </p>
     </div>
   );
 }
