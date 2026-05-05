@@ -151,7 +151,7 @@ export default function PronunClient() {
 
       setResult({
         recognizedText: res.text,
-        ar: predictARBand(avgScore),
+        ar: predictARBand(avgScore ?? 0),
         weakWords: pickWeakestWords(words),
         weakPhonemes: pickWeakestPhonemes(words),
       });
