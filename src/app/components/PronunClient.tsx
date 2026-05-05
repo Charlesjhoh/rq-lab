@@ -124,7 +124,7 @@ export default function PronunClient() {
       const push = SpeechSDK.AudioInputStream.createPushStream(
         SpeechSDK.AudioStreamFormat.getWaveFormatPCM(16000, 16, 1)
       );
-      push.write(pcm);
+      push.write(pcm.buffer as ArrayBuffer);
       push.close();
 
       const audioConfig = SpeechSDK.AudioConfig.fromStreamInput(push);
