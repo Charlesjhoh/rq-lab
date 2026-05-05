@@ -297,8 +297,8 @@ const student = d.profiles;
                         const ref = (d.reference_text || "").split(" ");
                         const spoken = (d.recognized_text || "").split(" ");
 
-                        const refClean = ref.map(w => w.replace(/[^a-z]/gi, "").toLowerCase());
-                        const spokenClean = spoken.map(w => w.replace(/[^a-z]/gi, "").toLowerCase());
+                        const refClean = ref.map((w: string) => w.replace(/[^a-z]/gi, "").toLowerCase());
+                        const spokenClean = spoken.map((w: string) => w.replace(/[^a-z]/gi, "").toLowerCase());
 
                         // 🔥 LCS DP
                         const dp = Array(ref.length + 1)
