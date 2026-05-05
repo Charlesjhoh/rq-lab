@@ -38,7 +38,8 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: "http://localhost:3001/login",
+        emailRedirectTo: "https://rq-lab.vercel.app/login",
+        shouldCreateUser: true,
       },
     });
 
