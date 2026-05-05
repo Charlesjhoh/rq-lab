@@ -147,7 +147,7 @@ export default function PronunClient() {
 
       const pa = (SpeechSDK as any).PronunciationAssessmentResult.fromResult(res);
       const words = pa.detailResult?.Words ?? [];
-      const avgScore = average(words.map(w => w.PronunciationAssessment?.AccuracyScore ?? 0)) ?? 80;
+      const avgScore = average(words.map((w: any) => w.PronunciationAssessment?.AccuracyScore ?? 0));
 
       setResult({
         recognizedText: res.text,
