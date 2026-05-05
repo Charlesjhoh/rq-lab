@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     buffer.buffer.slice(
     buffer.byteOffset,
     buffer.byteOffset + buffer.byteLength
-  )
+  ) as ArrayBuffer
 );
     pushStream.close();
 
