@@ -4,11 +4,9 @@ import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase-client";
 
-export default function PremiumReportPage() {
 
+function ClientPart() {
   const searchParams = useSearchParams();
-  const resultId = searchParams.get("result_id");
-
   const [result, setResult] = useState<any>(null);
   const [books, setBooks] = useState<any[]>([]);
 
@@ -250,5 +248,13 @@ function getReadingPlan(book: any, user: any) {
             </button>
           </div>
         </div>
+  );
+}
+
+export default function PremiumReportPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ClientPart />
+    </Suspense>
   );
 }

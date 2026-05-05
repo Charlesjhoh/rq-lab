@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
 
-export default function ReportPage() {
+function ClientPart() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -146,4 +146,12 @@ return (
     )}
   </div>
 );
+}
+
+export default function ReportPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ClientPart />
+    </Suspense>
+  );
 }
