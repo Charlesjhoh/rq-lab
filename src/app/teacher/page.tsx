@@ -14,7 +14,15 @@ export default function TeacherPage() {
   const router = useRouter();
 
   // ✅ 1. 전체 학생 목록 (profiles 기준)
-const [students, setStudents] = useState([]);
+type Student = {
+  id: string;
+  student_name: string;
+  parent_name: string;
+  birth: string;
+};
+
+const [students, setStudents] = useState<Student[]>([]);
+
 const [keyword, setKeyword] = useState("");
 const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
