@@ -673,7 +673,9 @@ await supabase.from("reading_results").insert([
 ])
   .select()
   .single();
-setResultId(data.id);
+
+  setResultId(resultId);
+
 let levelUp: "AR2" | "AR3" | null = null;
 
 if (currentLevel === "AR1" && wpm >= 80 && accuracy >= 85) {
