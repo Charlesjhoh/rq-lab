@@ -95,7 +95,7 @@ const rec =
     : { short: [], long: [] };
 
 function getDiagnosis(latest: any) {
-  if (!latest) return "";
+  if (!latest) return <div>결과가 없습니다</div>;
 
   const { wpm, comprehension, accuracy } = latest;
 
@@ -254,10 +254,10 @@ const solution = getSolution(result);
          <div style={{ marginBottom: 20 }}>
           <h3>📊 현재 수준</h3>
           
-          <p>AR: {result.final_ar?.toFixed(1)}</p>
-           <p>속도: {Math.round(result.wpm)} WPM</p>
-           <p>정확도: {Math.round(result.accuracy)}%</p>
-           <p>이해도: {Math.round(result.ai_score)}%</p>
+            <p>📘 AR: {latest.final_ar ? latest.final_ar.toFixed(1) : "-"}</p>
+            <p>⚡ 속도: {latest.wpm ? Math.round(latest.wpm) : "-" } WPM</p>
+            <p>🎯 정확도: {latest.accuracy ? Math.round(latest.accuracy) : "-" }%</p>
+            <p>📚 이해도: {latest.comprehension ? Math.round(latest.comprehension) : "-" }%</p>
             {result && (
               <div style={{ marginTop: 10, background: "#f5f5f5", padding: 12 }}>
                 <b>📊 학습 진단</b>
