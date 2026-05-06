@@ -16,13 +16,7 @@ import { useSearchParams } from "next/navigation";
 
 import { useRouter } from "next/navigation";
 
-const [feedback, setFeedback] = useState({
-  understood: "",
-  helpful: "",
-  paid: "",
-  comment: "",
-});
-const [resultId, setResultId] = useState<string | null>(null);
+
 /* ---------------- AR 계산 ---------------- */
 
 const calculateBaseAR = (wpm: number) => {
@@ -130,6 +124,13 @@ export default function StepTestClient({ user }: { user: any }) {
   const searchParams = useSearchParams();
   const level = searchParams.get("level");
   const profileId = searchParams.get("profile_id");
+  const [feedback, setFeedback] = useState({
+  understood: "",
+  helpful: "",
+  paid: "",
+  comment: "",
+  });
+  const [resultId, setResultId] = useState<string | null>(null);
   if (!profileId) {
   console.error("profileId 없음");
   return;
