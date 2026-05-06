@@ -142,7 +142,8 @@ function getCoreDiagnosis(data: any) {
 }
 
 function getErrorType(data: any) {
-  const { badPronunciations = [], wrongWords = [] } = data;
+  const badPronunciations = data?.badPronunciations ?? [];
+  const wrongWords = data?.wrongWords ?? [];
 
   if (badPronunciations.length > wrongWords.length) {
     return "발음 정확도가 주요 문제입니다.";
@@ -156,8 +157,8 @@ function getErrorType(data: any) {
 }
 
 function getWordSamples(data: any) {
-  const bad = data.badPronunciations || [];
-  const wrong = data.wrongWords || [];
+  const bad = data?.badPronunciations ?? [];
+  const wrong = data?.wrongWords ?? [];
 
   return {
     pronunciation: bad.slice(0, 3),
