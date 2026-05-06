@@ -97,7 +97,9 @@ const rec =
 function getDiagnosis(latest: any) {
   if (!latest) return "";
 
-  const { wpm, comprehension, accuracy } = latest;
+      const wpm = latest.wpm ?? 0;
+      const accuracy = latest.accuracy ?? 0;
+      const comprehension = latest.comprehension ?? 0;
 
   // 🔥 1️⃣ 이해도 낮음
   if (comprehension < 60) {
@@ -119,8 +121,11 @@ function getDiagnosis(latest: any) {
 }
 
 function getCoreDiagnosis(data: any) {
-  const { wpm, accuracy, ai_score } = data;
+    if (!data) return "";
 
+      const wpm = data.wpm ?? 0;
+      const accuracy = data.accuracy ?? 0;
+      const ai_score = data.ai_score ?? 0;
   if (ai_score < 60) {
     return "내용 이해가 부족한 상태입니다.";
   }
@@ -161,8 +166,11 @@ function getWordSamples(data: any) {
 }
 
 function getSolution(data: any) {
-  const { wpm, accuracy, ai_score } = data;
+  if (!data) return "";
 
+      const wpm = data.wpm ?? 0;
+      const accuracy = data.accuracy ?? 0;
+      const ai_score = data.ai_score ?? 0;
   if (ai_score < 60) {
     return "문장을 의미 단위로 끊어 이해하며 읽는 연습이 필요합니다.";
   }
