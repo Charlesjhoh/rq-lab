@@ -130,7 +130,9 @@ export default function StepTestClient({ user }: { user: any }) {
   const searchParams = useSearchParams();
   const level = searchParams.get("level");
   const profileId = searchParams.get("profile_id");
-
+  if (!profileId) {
+  return <div>profile_id 없음</div>;
+    } 
   const [studentName, setStudentName] = useState("");
   const [parentName, setParentName] = useState("");
   const [birth, setBirth] = useState(""); // YYYY-MM-DD
@@ -160,7 +162,9 @@ export default function StepTestClient({ user }: { user: any }) {
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [lastPassageId, setLastPassageId] = useState<number | null>(null);
   /* ---------------- 지문 로딩 ---------------- */
-
+  if (!user) {
+    return <div>유저 없음</div>;
+  }
 useEffect(() => {
   if (!level) return;
 
@@ -632,17 +636,23 @@ console.log("🔥 저장 데이터:", {
 const aiScore = compData.score ?? 0;
 const aiComment = compData.summary ?? "분석 결과 없음";
 
-const { data: profile } = await supabase
+const { data: profile, error } = await supabase
   .from("profiles")
-  .select("student_id")
+  .select("*")
   .eq("id", user.id)
-  .single();
+  .maybeSingle();
 
-  console.log("student_id:", profile?.student_id);
-  if (!profile) {
+if (error) {
+  console.error(error);
+  return;
+}
+
+if (!profile) {
   console.error("profile 없음");
   return;
 }
+
+console.log("student_name:", profile.student_name);
   // ---------------- DB 저장 ----------------
 await supabase.from("reading_results").insert([
   {
