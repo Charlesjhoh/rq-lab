@@ -22,7 +22,7 @@ const [feedback, setFeedback] = useState({
   paid: "",
   comment: "",
 });
-
+const [resultId, setResultId] = useState<string | null>(null);
 /* ---------------- AR 계산 ---------------- */
 
 const calculateBaseAR = (wpm: number) => {
@@ -670,8 +670,10 @@ await supabase.from("reading_results").insert([
     comp_summary: compData.summary || "",
 
   },
-]);
-
+])
+  .select()
+  .single();
+setResultId(data.id);
 let levelUp: "AR2" | "AR3" | null = null;
 
 if (currentLevel === "AR1" && wpm >= 80 && accuracy >= 85) {
@@ -1013,7 +1015,7 @@ return (
 
       const { error } = await supabase.from("feedbacks").insert({
         user_id: user.id,
-        result_id: finalResult?.id, // ⚠️ 이거 중요
+        result_id: resultId,   // ⚠️ 이거 중요
         understood: feedback.understood,
         helpful: feedback.helpful,
         paid: feedback.paid,
