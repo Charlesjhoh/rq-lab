@@ -857,7 +857,7 @@ return (
     {/* RESULT */}
 {phase === "result" && finalResult && (
   
-  
+<div>  
   <div>
     <h3>📌 발음 / 이해 피드백</h3>
     
@@ -985,8 +985,8 @@ return (
   </div>
 
 
-)}
-{finalResult && (
+
+
 <div style={{ marginTop: 30, padding: 20, background: "#f5f5f5" }}>
   <p><b>👉 10초 피드백</b></p>
 
@@ -1052,6 +1052,9 @@ return (
   >
     제출
   </button>
+  </div>
+ </div>
+      )}
 </div>
-</div>
-)}
+  );
+}
