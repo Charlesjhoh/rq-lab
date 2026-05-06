@@ -654,6 +654,7 @@ await supabase.from("reading_results").insert([
     coverage: readingCoverage,
     recognized_text: spokenText,
     reference_text: refText,
+    bad_pronunciations: pronunData.badPronunciations || [],
     wrong_words: pronunData.wrongWords || [],
 
     ai_score: aiScore,
