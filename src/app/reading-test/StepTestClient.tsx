@@ -658,7 +658,6 @@ await supabase.from("reading_results").insert([
   {
     user_id: user.id,
     profile_id: profileId,
-    student_id: profile?.student_id,
     wpm: safeWpm,
     accuracy: safeAccuracy,
     comprehension: comprehensionScore,
@@ -683,7 +682,10 @@ await supabase.from("reading_results").insert([
 ])
   .select()
   .single();
-
+if (!profileId) {
+  console.error("profileId 없음");
+  return;
+}
   setResultId(resultId);
 
 let levelUp: "AR2" | "AR3" | null = null;
