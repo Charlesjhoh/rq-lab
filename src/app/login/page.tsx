@@ -13,18 +13,44 @@ export default function LoginPage() {
     const checkUser = async () => {
       const { data } = await supabase.auth.getSession();
 
-      if (data.session) {
-        router.replace("/reading-test");
+       if (data.session?.user) {
+      const userId = data.session.user.id;
+
+      // ✅ 프로필 존재 여부 확인
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
+
+      if (profile) {
+        router.replace("/reading-test"); // 기존 유저
+      } else {
+        router.replace("/onboarding"); // 신규 유저 (정보 입력 페이지)
       }
-    };
-    checkUser();
-  }, [router]);
+    }
+  };
+
+  checkUser();
+}, [router]);
 
       useEffect(() => {
         const { data: listener } = supabase.auth.onAuthStateChange(
-          (event, session) => {
+          async (event, session) => {
             if (event === "SIGNED_IN" && session?.user) {
-              router.push("/reading-test");
+              const userId = session.user.id;
+
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("*")
+                .eq("id", userId)
+                .single();
+
+              if (profile) {
+                router.push("/reading-test");
+              } else {
+                router.push("/onboarding");
+              }
             }
           }
         );
@@ -32,7 +58,7 @@ export default function LoginPage() {
         return () => {
           listener.subscription.unsubscribe();
         };
-      }, []);
+      }, [router]);
 
   const handleLogin = async () => {
     const { error } = await supabase.auth.signInWithOtp({
