@@ -131,8 +131,10 @@ export default function StepTestClient({ user }: { user: any }) {
   const level = searchParams.get("level");
   const profileId = searchParams.get("profile_id");
   if (!profileId) {
-  return <div>profile_id 없음</div>;
-    } 
+  console.error("profileId 없음");
+  return;
+    }
+ 
   const [studentName, setStudentName] = useState("");
   const [parentName, setParentName] = useState("");
   const [birth, setBirth] = useState(""); // YYYY-MM-DD
