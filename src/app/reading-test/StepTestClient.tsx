@@ -1053,6 +1053,5 @@ return (
     제출
   </button>
 </div>
-
-);
-}
+</div>
+)}
