@@ -118,6 +118,65 @@ function getDiagnosis(latest: any) {
   return "현재 수준에서 안정적인 읽기 능력을 보이고 있습니다. 반복 읽기를 통해 실력을 유지하세요.";
 }
 
+function getCoreDiagnosis(data: any) {
+  const { wpm, accuracy, ai_score } = data;
+
+  if (ai_score < 60) {
+    return "내용 이해가 부족한 상태입니다.";
+  }
+
+  if (wpm > 140 && ai_score < 75) {
+    return "읽기 속도는 빠르지만 이해도가 부족합니다.";
+  }
+
+  if (accuracy < 85) {
+    return "단어를 정확히 읽는 힘이 부족합니다.";
+  }
+
+  return "전반적으로 안정적인 읽기입니다.";
+}
+
+function getErrorType(data: any) {
+  const { badPronunciations = [], wrongWords = [] } = data;
+
+  if (badPronunciations.length > wrongWords.length) {
+    return "발음 정확도가 주요 문제입니다.";
+  }
+
+  if (wrongWords.length > 10) {
+    return "단어를 빠뜨리거나 잘못 읽는 경향이 있습니다.";
+  }
+
+  return "큰 오류 없이 안정적인 읽기입니다.";
+}
+
+function getWordSamples(data: any) {
+  const bad = data.badPronunciations || [];
+  const wrong = data.wrongWords || [];
+
+  return {
+    pronunciation: bad.slice(0, 3),
+    missing: wrong.slice(0, 3),
+  };
+}
+
+function getSolution(data: any) {
+  const { wpm, accuracy, ai_score } = data;
+
+  if (ai_score < 60) {
+    return "문장을 의미 단위로 끊어 이해하며 읽는 연습이 필요합니다.";
+  }
+
+  if (wpm > 140 && ai_score < 75) {
+    return "속도를 줄이고 내용을 이해하며 읽는 훈련이 필요합니다.";
+  }
+
+  if (accuracy < 85) {
+    return "천천히 정확하게 읽는 반복 훈련이 필요합니다.";
+  }
+
+  return "현재 방식으로 꾸준히 읽기 훈련을 유지하세요.";
+}
 
 function getReadingTime(book: any, user: any) {
   let factor = 1.0;
@@ -169,13 +228,29 @@ function getReadingPlan(book: any, user: any) {
   return "👉 하루 20분씩 꾸준히 읽는 장기 독해 훈련";
   }
 }
-
+const diagnosis = getCoreDiagnosis(result);
+const errorType = getErrorType(result);
+const samples = getWordSamples(result);
+const solution = getSolution(result);
 
 
   return (
     <div style={{ padding: 20, maxWidth: 800, margin: "0 auto" }}>
       <h2>💎 프리미엄 리포트</h2>
+      <div>
+        <h3>📊 학습 진단</h3>
+        <p>{diagnosis}</p>
+        <p>{errorType}</p>
+
+        <h4>🔍 대표 오류 단어</h4>
+        <p>발음 오류: {samples.pronunciation.join(", ")}</p>
+        <p>읽기 오류: {samples.missing.join(", ")}</p>
+
+        <h4>🚀 학습 전략</h4>
+        <p>{solution}</p>
+      </div>
       {result && (
+        
          <div style={{ marginBottom: 20 }}>
           <h3>📊 현재 수준</h3>
           

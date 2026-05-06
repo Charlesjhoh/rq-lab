@@ -25,6 +25,7 @@ export default function OnboardingPage() {
       id: user.id,
       parent_name: parentName,
       student_name: studentName,
+      role: "student",
       birth,
     });
 

@@ -15,7 +15,7 @@ export default function LoginPage() {
 
        if (data.session?.user) {
       const userId = data.session.user.id;
-
+      router.replace("/"); // 🔥 여기 핵심
       // ✅ 프로필 존재 여부 확인
       const { data: profile } = await supabase
         .from("profiles")
@@ -90,6 +90,7 @@ export default function LoginPage() {
       >
         로그인 링크 받기
       </button>
+      <h3> 이메일을 확인해주세요. 로그인 링크를 클릭하면 자동으로 이동됩니다. </h3>
     </div>
   );
 }
