@@ -679,9 +679,10 @@ await supabase.from("reading_results").insert([
     comp_summary: compData.summary || "",
 
   },
-])
-  .select()
-  .single();
+]);
+//  .select()
+//  .single();
+
 if (!profileId) {
   console.error("profileId 없음");
   return;
@@ -716,7 +717,7 @@ setFinalResult({
   badPronunciations: pronunData.badPronunciations, // 🔥 이거 추가
   levelUp, 
 });
-console.log("wrongWords:", pronunData.wrongWords);
+
   setPhase("result");
 };
 
@@ -1029,7 +1030,7 @@ return (
 
       const { error } = await supabase.from("feedbacks").insert({
         user_id: user.id,
-        result_id: resultId,   // ⚠️ 이거 중요
+//        result_id: resultId,   // ⚠️ 이거 중요
         understood: feedback.understood,
         helpful: feedback.helpful,
         paid: feedback.paid,
