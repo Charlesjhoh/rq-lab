@@ -98,7 +98,7 @@ return (
           cursor: "pointer"
         }}
       >
-        👉 맞춤 추천 + 학습 전략 보기
+        👉 우리 아이 수준에 맞는 정확한 훈련 방법 보기
       </button>
     </div>
 
@@ -124,9 +124,10 @@ return (
             <p>🎯 정확도: {Math.round(d.accuracy)}%</p>
             <p>📚 이해도: {Math.round(d.comprehension)}%</p>
             <button
-              onClick={() =>
-                router.push(`/premium-report?result_id=${d.id}`)
-              }
+              onClick={() => {
+                alert("베타 기간 동안 프리미엄 리포트를 무료로 제공합니다.");
+                router.push(`/premium-report?result_id=${d.id}`);
+              }}
               style={{
                 marginTop: 8,
                 padding: "6px 10px",

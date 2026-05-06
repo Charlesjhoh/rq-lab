@@ -4,6 +4,26 @@ import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase-client";
 
+function getFinalDiagnosis(data: any) {
+  const wrong = data?.wrong_words ?? [];
+  const bad = data?.bad_pronunciations ?? [];
+  const accuracy = data?.accuracy ?? 100;
+
+  // 우선순위: 읽기 오류 > 발음 > 정확도
+  if (wrong.length > 5) {
+    return "단어를 빠뜨리거나 잘못 읽는 경향이 있습니다.";
+  }
+
+  if (bad.length > 3) {
+    return "발음 정확도가 부족합니다.";
+  }
+
+  if (accuracy < 80) {
+    return "읽기 정확도가 전반적으로 낮은 상태입니다.";
+  }
+
+  return "큰 오류 없이 안정적인 읽기입니다.";
+}
 
 function ClientPart() {
   const searchParams = useSearchParams();
@@ -237,10 +257,38 @@ function getReadingPlan(book: any, user: any) {
   return "👉 하루 20분씩 꾸준히 읽는 장기 독해 훈련";
   }
 }
-const diagnosis = getCoreDiagnosis(result);
+
+function getPremiumSummary(data: any) {
+  const wrong = data?.wrong_words ?? [];
+  const bad = data?.bad_pronunciations ?? [];
+
+  let problem = "";
+  let cause = "";
+  let solution = "";
+
+  if (wrong.length > 5) {
+    problem = "단어를 빠뜨리거나 잘못 읽는 경향이 있습니다.";
+    cause = "빠르게 읽으면서 단어를 정확히 보지 못하고 있습니다.";
+    solution = "속도를 줄이고 한 문장을 2~3번 반복해서 읽는 훈련이 필요합니다.";
+  } else if (bad.length > 3) {
+    problem = "발음 정확도가 부족합니다.";
+    cause = "소리를 정확히 구분하지 못하고 읽고 있습니다.";
+    solution = "틀린 단어를 따로 모아서 소리 중심으로 반복 훈련이 필요합니다.";
+  } else {
+    problem = "큰 오류 없이 안정적인 읽기입니다.";
+    cause = "기본적인 읽기 습관이 잘 형성되어 있습니다.";
+    solution = "속도를 조금씩 올리는 훈련을 하면 더 좋아집니다.";
+  }
+
+  return { problem, cause, solution };
+}
+//const summary = getPremiumSummary(data);
+//const diagnosis = getCoreDiagnosis(result);
 const errorType = getErrorType(result);
 const samples = getWordSamples(result);
 const solution = getSolution(result);
+const diagnosis = getFinalDiagnosis(data);
+
 if (!result) return <div>결과가 없습니다</div>;
 
   return (
@@ -249,7 +297,7 @@ if (!result) return <div>결과가 없습니다</div>;
       <div>
         <h3>📊 학습 진단</h3>
         <p>{diagnosis}</p>
-        <p>{errorType}</p>
+
 
         <h4>🔍 대표 오류 단어</h4>
         <p>발음 오류: {samples.pronunciation.join(", ")}</p>
