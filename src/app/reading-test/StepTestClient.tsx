@@ -682,9 +682,9 @@ await supabase.from("reading_results").insert([
     comp_summary: compData.summary || "",
 
   },
-]);
-//  .select()
-//  .single();
+])
+  .select()
+  .single();
 
 if (!profileId) {
   console.error("profileId 없음");
@@ -986,6 +986,7 @@ return (
 
 
 )}
+{finalResult && (
 <div style={{ marginTop: 30, padding: 20, background: "#f5f5f5" }}>
   <p><b>👉 10초 피드백</b></p>
 
@@ -1033,7 +1034,7 @@ return (
 
       const { error } = await supabase.from("feedbacks").insert({
         user_id: user.id,
-//        result_id: resultId,   // ⚠️ 이거 중요
+        result_id: resultId,   // ⚠️ 이거 중요
         understood: feedback.understood,
         helpful: feedback.helpful,
         paid: feedback.paid,
@@ -1052,7 +1053,6 @@ return (
     제출
   </button>
 </div>
-  </div>
-  
+
 );
 }
