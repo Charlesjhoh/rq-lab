@@ -287,7 +287,7 @@ function getPremiumSummary(data: any) {
 const errorType = getErrorType(result);
 const samples = getWordSamples(result);
 const solution = getSolution(result);
-const diagnosis = getFinalDiagnosis(data);
+const diagnosis = getFinalDiagnosis(result);
 
 if (!result) return <div>결과가 없습니다</div>;
 
