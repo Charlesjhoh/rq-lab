@@ -16,7 +16,12 @@ import { useSearchParams } from "next/navigation";
 
 import { useRouter } from "next/navigation";
 
-
+const [feedback, setFeedback] = useState({
+  understood: "",
+  helpful: "",
+  paid: "",
+  comment: "",
+});
 
 /* ---------------- AR 계산 ---------------- */
 
@@ -961,6 +966,73 @@ return (
 
 
 )}
+<div style={{ marginTop: 30, padding: 20, background: "#f5f5f5" }}>
+  <p><b>👉 10초 피드백</b></p>
+
+  <p>1. 결과 이해되셨나요?</p>
+  <select onChange={(e) => setFeedback({...feedback, understood: e.target.value})}>
+    <option value="">선택</option>
+    <option>매우 그렇다</option>
+    <option>보통</option>
+    <option>아니다</option>
+  </select>
+
+  <p>2. 도움이 되었나요?</p>
+  <select onChange={(e) => setFeedback({...feedback, helpful: e.target.value})}>
+    <option value="">선택</option>
+    <option>매우 그렇다</option>
+    <option>보통</option>
+    <option>아니다</option>
+  </select>
+
+  <p>3. 유료라면 사용할 의향 있으신가요?</p>
+  <select onChange={(e) => setFeedback({...feedback, paid: e.target.value})}>
+    <option value="">선택</option>
+    <option>있다</option>
+    <option>고민</option>
+    <option>없다</option>
+  </select>
+
+  <p>👉 가장 궁금한 점 1가지만 적어주세요</p>
+  <textarea
+    style={{ width: "100%", height: 80 }}
+    onChange={(e) => setFeedback({...feedback, comment: e.target.value})}
+  />
+
+  <button
+    style={{ marginTop: 10 }}
+    onClick={async () => {
+      console.log("피드백:", feedback);
+
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        alert("로그인이 필요합니다");
+        return;
+      }
+
+      const { error } = await supabase.from("feedbacks").insert({
+        user_id: user.id,
+        result_id: finalResult?.id, // ⚠️ 이거 중요
+        understood: feedback.understood,
+        helpful: feedback.helpful,
+        paid: feedback.paid,
+        comment: feedback.comment,
+      });
+
+      if (error) {
+        console.error(error);
+        alert("저장 실패");
+        return;
+      }
+
+      alert("감사합니다!");
+    }}
+  >
+    제출
+  </button>
+</div>
   </div>
+  
 );
 }
