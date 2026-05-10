@@ -645,6 +645,8 @@ const { data: profile, error } = await supabase
   .eq("id", user.id)
   .maybeSingle();
 
+  console.log("🔥 profile:", profile);
+console.log("🔥 profile.student_id:", profile?.student_id);
 if (error) {
   console.error(error);
   return;
