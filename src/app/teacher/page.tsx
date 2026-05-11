@@ -59,6 +59,7 @@ useEffect(() => {
       .from("profiles")
       .select(`
         id,
+        student_id,
         student_name,
         reading_results (
           id,
@@ -94,13 +95,7 @@ useEffect(() => {
         const loadResults = async () => {
           const { data, error } = await supabase
             .from("reading_results")
-            .select(`
-              *,
-              profiles (
-                student_name,
-                parent_name
-              )
-            `)
+            .select("*")
             .eq("student_id", selectedStudentId)
             .order("created_at", { ascending: false });
 
@@ -121,7 +116,7 @@ useEffect(() => {
       const latestMap = Object.fromEntries(
         allResults.map((u: any) => {
           const latest = u.reading_results?.[0];
-          return [u.id, latest];
+          return [u.student_id, latest];
         })
       );
       const sortedUsers = [...filteredUsers].sort((a, b) => {
@@ -139,7 +134,9 @@ useEffect(() => {
 
         return score(B) - score(A);
       });
-
+      const selectedStudent = students.find(
+        (s) => s.student_id === selectedStudentId
+      );
   return (
     <div style={{ padding: 20, display: "flex", gap: 20 }}>
       
@@ -246,12 +243,12 @@ useEffect(() => {
                       if (!d.reference_text || !d.recognized_text) {
                         return null; // 🔥 핵심 방어
                       }
-const student = d.profiles;
+
                       return (
                         <div key={d.id}>
 
                   <p>
-                    학생: {student?.student_name} / 보호자: {student?.parent_name}
+                    학생: {selectedStudent?.student_name} / 보호자: {selectedStudent?.parent_name}
                   </p>
 
                   <p>AR: {d.final_ar?.toFixed(1)}</p>
