@@ -55,14 +55,31 @@ useEffect(() => {
 
 useEffect(() => {
   const loadAll = async () => {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .order("created_at", { foreignTable: "reading_results", ascending: false });
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(`
+        id,
+        student_name,
+        reading_results (
+          id,
+          wpm,
+          accuracy,
+          comprehension,
+          final_ar,
+          created_at
+        )
+      `)
+      .order("created_at", {
+        foreignTable: "reading_results",
+        ascending: false,
+      });
+
+    console.log(data);
+    console.log(error);
+
     if (data) setAllResults(data);
   };
-console.log(data);
-console.log(error);
+
   loadAll();
 }, []);
 
