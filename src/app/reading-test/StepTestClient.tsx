@@ -657,12 +657,13 @@ if (!profile) {
   return;
 }
 
-console.log("student_name:", profile.student_name);
+console.log("🔥 저장될 student_id:", profile?.student_id);
   // ---------------- DB 저장 ----------------
 await supabase.from("reading_results").insert([
   {
     user_id: user.id,
     profile_id: profileId,
+     student_id: profile?.student_id, // ✅ 추가
     wpm: safeWpm,
     accuracy: safeAccuracy,
     comprehension: comprehensionScore,

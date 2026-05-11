@@ -16,6 +16,7 @@ export default function TeacherPage() {
   // ✅ 1. 전체 학생 목록 (profiles 기준)
 type Student = {
   id: string;
+  student_id: string;
   student_name: string;
   parent_name: string;
   birth: string;
@@ -44,7 +45,7 @@ useEffect(() => {
   const load = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("id, student_name, parent_name, birth")
+      .select("id, student_id, student_name, parent_name, birth")
     console.log("🔥 profiles data:", data); // 👈 여기
     if (data) setStudents(data);
   };
@@ -93,7 +94,7 @@ useEffect(() => {
                 parent_name
               )
             `)
-            .eq("user_id", selectedUserId)
+            .eq("student_id", selectedUserId)
             .order("created_at", { ascending: false });
 
           if (!error) {
@@ -165,7 +166,7 @@ useEffect(() => {
             return (
               <div
                 key={u.id}
-                onClick={() => setSelectedUserId(u.id)}
+                onClick={() => setSelectedUserId(u.student_id)}
                 style={{
                   cursor: "pointer",
                   padding: "8px",
