@@ -25,7 +25,7 @@ type Student = {
 const [students, setStudents] = useState<Student[]>([]);
 
 const [keyword, setKeyword] = useState("");
-const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
 type ReadingResult = {
   id: string;
@@ -57,32 +57,22 @@ useEffect(() => {
   const loadAll = async () => {
   const { data, error } = await supabase
     .from("profiles")
-    .select(`
-      id,
-      student_name,
-      reading_results (
-        id,
-        wpm,
-        accuracy,
-        comprehension,
-        final_ar,
-        created_at
-      )
-    `)
+    .select("*")
     .order("created_at", { foreignTable: "reading_results", ascending: false });
     if (data) setAllResults(data);
   };
-
+console.log(data);
+console.log(error);
   loadAll();
 }, []);
 
 
 useEffect(() => {
-  console.log("현재 선택된 user:", selectedUserId);
-}, [selectedUserId]);
+  console.log("현재 선택된 user:", selectedStudentId);
+}, [selectedStudentId]);
   // ✅ 2. 선택된 학생의 결과만 가져오기
       useEffect(() => {
-        if (!selectedUserId) return;
+        if (!selectedStudentId) return;
 
         const loadResults = async () => {
           const { data, error } = await supabase
@@ -94,7 +84,7 @@ useEffect(() => {
                 parent_name
               )
             `)
-            .eq("student_id", selectedUserId)
+            .eq("student_id", selectedStudentId)
             .order("created_at", { ascending: false });
 
           if (!error) {
@@ -103,7 +93,7 @@ useEffect(() => {
         };
 
         loadResults();
-      }, [selectedUserId]); // 🔥 이거 반드시 있어야 함
+      }, [selectedStudentId]); // 🔥 이거 반드시 있어야 함
 
   // ✅ 3. 검색 필터
     const filteredUsers = students.filter((u) =>
@@ -166,7 +156,7 @@ useEffect(() => {
             return (
               <div
                 key={u.id}
-                onClick={() => setSelectedUserId(u.student_id)}
+                onClick={() => setSelectedStudentId(u.student_id)}
                 style={{
                   cursor: "pointer",
                   padding: "8px",
@@ -194,7 +184,7 @@ useEffect(() => {
       {/* 👉 우측: 학생 결과 */}
       <div style={{ flex: 1 }}>
         <h3>📊 학생 결과</h3>
-        <p>선택된 ID: {selectedUserId}</p>
+        <p>선택된 ID: {selectedStudentId}</p>
           <p><b>현재 상태 요약</b></p>
 
           {results.length > 0 && (
@@ -214,9 +204,9 @@ useEffect(() => {
             })()
           )}
 
-        {!selectedUserId && <p>학생을 선택하세요</p>}
+        {!selectedStudentId && <p>학생을 선택하세요</p>}
 
-        {selectedUserId && (
+        {selectedStudentId && (
           <> 
 
 
