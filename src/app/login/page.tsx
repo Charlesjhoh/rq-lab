@@ -9,29 +9,29 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const checkSession = async () => {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+            const checkSession = async () => {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
 
-  if (session?.user) {
-    const userId = session.user.id;
+          if (session?.user) {
+            const userId = session.user.id;
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle();
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("*")
+              .eq("id", userId)
+              .maybeSingle();
 
-    if (profile) {
-      router.replace("/reading-test");
-    } else {
-      router.replace("/onboarding");
-    }
-  }
-};
+            if (profile) {
+              router.replace("/reading-test");
+            } else {
+              router.replace("/onboarding");
+            }
+          }
+        };
 
-checkSession();
+        checkSession();
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(
