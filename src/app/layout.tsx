@@ -11,10 +11,14 @@ export default function RootLayout({
 }) {
   const router = useRouter();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/"); // 🔥 여기
-  };
+    const handleLogout = async () => {
+      await supabase.auth.signOut();
+
+      setUserId(null);
+const result = await supabase.auth.getSession()
+console.log(result.data.session)
+      router.replace("/login");
+    };
   
 const [userId, setUserId] = useState<string | null>(null);
 
