@@ -11,6 +11,11 @@ export default function OnboardingPage() {
   const [studentName, setStudentName] = useState("");
   const [birth, setBirth] = useState("");
 
+const isFormValid =
+  parentName.trim() &&
+  studentName.trim() &&
+  birth.trim();
+  
   const handleSave = async () => {
     const { data } = await supabase.auth.getSession();
     const user = data.session?.user;
@@ -27,6 +32,7 @@ export default function OnboardingPage() {
       student_name: studentName,
       role: "student",
       birth,
+      email: user?.email,
     });
 
     if (error) {
@@ -62,13 +68,21 @@ export default function OnboardingPage() {
         onChange={(e) => setBirth(e.target.value)}
         style={{ width: "100%", padding: 10, marginTop: 12 }}
       />
-
-      <button
-        onClick={handleSave}
-        style={{ width: "100%", padding: 12, marginTop: 20 }}
-      >
-        저장하고 테스트 시작
-      </button>
+        {!isFormValid && (
+          <p style={{ color: "red", marginTop: 8 }}>
+            모든 정보를 입력해야 테스트를 진행할 수 있습니다.
+          </p>
+        )}
+        <button
+          disabled={!isFormValid}
+          style={{
+            opacity: isFormValid ? 1 : 0.5,
+            cursor: isFormValid ? "pointer" : "not-allowed",
+          }}
+          onClick={handleSave}
+        >
+          저장하고 테스트 시작
+        </button>
     </div>
   );
 }

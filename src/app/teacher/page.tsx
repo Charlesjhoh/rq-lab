@@ -20,6 +20,7 @@ type Student = {
   student_name: string;
   parent_name: string;
   birth: string;
+  email: string;
 };
 
 const [students, setStudents] = useState<Student[]>([]);
@@ -45,7 +46,7 @@ useEffect(() => {
   const load = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("id, student_id, student_name, parent_name, birth")
+      .select("id, student_id, student_name, parent_name, birth, email")
     console.log("🔥 profiles data:", data); // 👈 여기
     if (data) setStudents(data);
   };
@@ -120,8 +121,8 @@ useEffect(() => {
         })
       );
       const sortedUsers = [...filteredUsers].sort((a, b) => {
-        const A = latestMap[a.id];
-        const B = latestMap[b.id];
+        const A = latestMap[a.student_id];
+        const B = latestMap[b.student_id];
 
         const score = (x: any) => {
           if (!x) return 0;
@@ -244,11 +245,54 @@ useEffect(() => {
                         return null; // 🔥 핵심 방어
                       }
 
-                      return (
-                        <div key={d.id}>
+                    return (
+                      <div
+                        key={d.id}
+                        style={{
+                          border: "2px solid #ddd",
+                          borderRadius: 12,
+                          padding: 20,
+                          marginBottom: 40,
+                          background: "white",
+                        }}
+                      >
+                  <div
+                    style={{
+                      marginBottom: 20,
+                      paddingBottom: 10,
+                      borderBottom: "1px solid #ddd",
+                    }}
+                  >
+                    <h3>
+                      📋 테스트 기록
+                    </h3>
 
+                    <p>
+                      날짜: {new Date(d.created_at).toLocaleString()}
+                    </p>
+
+                    <p>
+                      결과 ID: {d.id}
+                    </p>
+                  </div>
                   <p>
-                    학생: {selectedStudent?.student_name} / 보호자: {selectedStudent?.parent_name}
+                    <div style={{ marginBottom: 10 }}>
+                      <p>
+                        학생: {selectedStudent?.student_name}
+                      </p>
+
+                      <p>
+                        보호자: {selectedStudent?.parent_name}
+                      </p>
+
+                      <p>
+                        이메일: {selectedStudent?.email}
+                      </p>
+
+                      <p>
+                        생년월일: {selectedStudent?.birth}
+                      </p>
+                    </div>
                   </p>
 
                   <p>AR: {d.final_ar?.toFixed(1)}</p>

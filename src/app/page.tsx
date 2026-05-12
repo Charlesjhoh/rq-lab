@@ -131,7 +131,6 @@ export default function HomePage() {
                     student_name: studentName,
                     parent_name: parentName,
                     birth: birth,
-                    role: "student",
                   },
                   {
                     onConflict: "id",
