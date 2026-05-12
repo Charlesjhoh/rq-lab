@@ -123,7 +123,7 @@ type RecallPhase = "idle" | "recording" | "recorded" | "submitting";
 export default function StepTestClient({ user }: { user: any }) {
   const searchParams = useSearchParams();
   const level = searchParams.get("level");
-  const profileId = searchParams.get("profile_id");
+
   const [feedback, setFeedback] = useState({
   understood: "",
   helpful: "",
@@ -131,10 +131,7 @@ export default function StepTestClient({ user }: { user: any }) {
   comment: "",
   });
   const [resultId, setResultId] = useState<string | null>(null);
-  if (!profileId) {
-  console.error("profileId 없음");
-  return;
-    }
+
  
   const [studentName, setStudentName] = useState("");
   const [parentName, setParentName] = useState("");
@@ -164,6 +161,31 @@ export default function StepTestClient({ user }: { user: any }) {
   const recallChunksRef = useRef<Blob[]>([]);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [lastPassageId, setLastPassageId] = useState<number | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(null);
+
+  useEffect(() => {
+  const loadProfile = async () => {
+    if (!user?.id) return;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile?.id) {
+      setProfileId(profile.id);
+    }
+  };
+
+  loadProfile();
+}, [user]);
+
+  if (!profileId) {
+  console.error("profileId 없음");
+  return;
+    }
+    
   /* ---------------- 지문 로딩 ---------------- */
   if (!user) {
     return <div>유저 없음</div>;
