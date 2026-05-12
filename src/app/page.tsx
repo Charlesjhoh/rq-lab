@@ -26,7 +26,7 @@ export default function HomePage() {
       .from("profiles")
       .select("parent_name, student_name, birth")
       .eq("id", user.id)
-      .single();
+      .maybeSingle()
 
     if (profile) {
       setParentName(profile.parent_name || "");

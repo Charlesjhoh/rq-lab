@@ -16,12 +16,15 @@ export default function LoginPage() {
         if (event === "SIGNED_IN" && session?.user) {
           const userId = session.user.id;
 
-          const { data: profile } = await supabase
+          const { data: profile, error } = await supabase
             .from("profiles")
             .select("*")
             .eq("id", userId)
-            .single();
+            .maybeSingle();
 
+          console.log("USER ID:", userId);
+          console.log("PROFILE:", profile);
+          console.log("ERROR:", error);
           if (profile) {
             router.replace("/reading-test");
           } else {
