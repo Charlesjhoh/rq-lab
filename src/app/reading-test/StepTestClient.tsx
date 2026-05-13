@@ -187,9 +187,7 @@ if (!profileId) {
       .eq("id", user.id)
       .maybeSingle();
 
-    if (profile?.id) {
-      setProfileId(profile.id);
-    }
+
   };
 
   loadProfile();
