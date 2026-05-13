@@ -268,7 +268,9 @@ useEffect(() => {
                     </h3>
 
                     <p>
-                      날짜: {new Date(d.created_at).toLocaleString()}
+                      날짜:   {new Date(d.created_at).toLocaleString("ko-KR", {
+    timeZone: "Asia/Seoul",
+  })}
                     </p>
 
                     <p>

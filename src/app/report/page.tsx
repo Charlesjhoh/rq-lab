@@ -118,7 +118,12 @@ return (
               background: "#fafafa",
             }}
           >
-            <p>📅 {new Date(d.created_at).toLocaleDateString()}</p>
+            <p>
+              📅{" "}
+              {new Date(d.created_at).toLocaleString("ko-KR", {
+                timeZone: "Asia/Seoul",
+              })}
+            </p>
             <p>📘 AR: {d.final_ar.toFixed(1)}</p>
             <p>⚡ 속도: {Math.round(d.wpm)} WPM</p>
             <p>🎯 정확도: {Math.round(d.accuracy)}%</p>
