@@ -129,7 +129,7 @@ export default function StepTestClient({
 }) {
   const searchParams = useSearchParams();
   const level = searchParams.get("level");
-
+  const router = useRouter();
 
 if (!profileId) {
   console.error("profileId 없음 → 잘못된 접근");
@@ -155,7 +155,7 @@ if (!profileId) {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [durationSec, setDurationSec] = useState(0);
 
-  const router = useRouter();
+
   const [phase, setPhase] = useState<Phase>("ready");
   const [recallPhase, setRecallPhase] = useState<RecallPhase>("idle");
   const [countdown, setCountdown] = useState(7);
