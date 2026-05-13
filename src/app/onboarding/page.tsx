@@ -40,8 +40,9 @@ const isFormValid =
       alert("정보 저장 중 오류가 발생했습니다.");
       return;
     }
+      const userId = data.session?.user?.id;
 
-    router.push(`/reading-test?profile_id=${data.id}`);
+      router.push(`/reading-test?profile_id=${userId}`);
   };
 
   return (
