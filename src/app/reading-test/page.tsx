@@ -6,7 +6,6 @@ import StepTestClient from "./StepTestClient";
 export default async function Page() {
   const cookieStore = cookies();
 
-  // 🔥 1. 먼저 서버용 supabase 생성
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -26,14 +25,26 @@ export default async function Page() {
     }
   );
 
+  // 1️⃣ 로그인 체크
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-const {
-  data: { user },
-} = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
 
-if (!user) {
-  redirect("/login");
-}
+  // 2️⃣ 프로필 체크 (🔥 핵심 추가)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
 
-return <StepTestClient user={user} />;
+  if (!profile) {
+    redirect("/onboarding");
+  }
+
+  // 3️⃣ profile_id까지 넘김
+  return <StepTestClient user={user} profileId={profile.id} />;
 }

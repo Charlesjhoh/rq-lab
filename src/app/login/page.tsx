@@ -10,21 +10,21 @@ export default function LoginPage() {
 
   useEffect(() => {
             const checkSession = async () => {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
 
-          if (session?.user) {
-            const userId = session.user.id;
+            const { data } = await supabase.auth.getSession();
 
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("*")
-              .eq("id", userId)
-              .maybeSingle();
+            if (data.session?.user) {
+              const userId = data.session.user.id;
+
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("id")
+                .eq("id", userId)
+                .maybeSingle();
+
 
             if (profile) {
-              router.replace("/reading-test");
+              router.replace(`/reading-test?profile_id=${profile.id}`);
             } else {
               router.replace("/onboarding");
             }

@@ -41,7 +41,7 @@ const isFormValid =
       return;
     }
 
-    router.push("/reading-test");
+    router.push(`/reading-test?profile_id=${data.id}`);
   };
 
   return (
