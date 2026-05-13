@@ -26,15 +26,19 @@ const isFormValid =
       return;
     }
 
-    const { error } = await supabase.from("profiles").insert({
-      id: user.id,
-      parent_name: parentName,
-      student_name: studentName,
-      role: "student",
-      birth,
-      email: user?.email,
-    });
-
+      const { error } = await supabase.from("profiles").upsert(
+        {
+          id: user.id,
+          parent_name: parentName,
+          student_name: studentName,
+          role: "student",
+          birth,
+          email: user.email,
+        },
+        {
+          onConflict: "id",
+        }
+      );
     if (error) {
       console.error(error);
       alert("정보 저장 중 오류가 발생했습니다.");
