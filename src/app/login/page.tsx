@@ -9,64 +9,35 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-            const checkSession = async () => {
+    const checkSession = async () => {
 
-            const { data } = await supabase.auth.getSession();
+      const { data } = await supabase.auth.getSession();
 
-            if (data.session?.user) {
-              const userId = data.session.user.id;
+      if (data.session?.user) {
+        const userId = data.session.user.id;
 
-              const { data: profile } = await supabase
-                .from("profiles")
-                .select("id")
-                .eq("id", userId)
-                .maybeSingle();
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", userId)
+          .maybeSingle();
 
-
-            if (profile) {
-              router.replace(`/reading-test?profile_id=${profile.id}`);
-            } else {
-              router.replace("/onboarding");
-            }
-          }
-        };
-
-        checkSession();
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === "SIGNED_IN" && session?.user) {
-          const userId = session.user.id;
-
-          const { data: profile, error } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", userId)
-            .maybeSingle();
-
-          console.log("USER ID:", userId);
-          console.log("PROFILE:", profile);
-          console.log("ERROR:", error);
-          if (profile) {
-            router.replace("/reading-test");
-          } else {
-            router.replace("/onboarding");
-          }
+        if (profile) {
+          router.replace(`/reading-test?profile_id=${profile.id}`);
+        } else {
+          router.replace("/onboarding");
         }
       }
-    );
-
-    return () => {
-      subscription.unsubscribe();
     };
+
+    checkSession();
   }, [router]);
 
   const handleLogin = async () => {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
         shouldCreateUser: true,
       },
     });
