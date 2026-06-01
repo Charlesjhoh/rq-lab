@@ -9,26 +9,54 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const handleAuth = async () => {
+      try {
+        console.log("CALLBACK PAGE 진입");
+        console.log("현재 URL:", window.location.href);
 
-      const { data } = await supabase.auth.getSession();
+        const { error } = await supabase.auth.exchangeCodeForSession(
+          window.location.href
+        );
 
-      const user = data.session?.user;
+        console.log("exchange 결과:", error);
 
-      if (!user) {
+        if (error) {
+          console.error("세션 생성 실패:", error);
+          router.replace("/login");
+          return;
+        }
+
+        const { data } = await supabase.auth.getSession();
+
+        console.log("session:", data);
+
+        const user = data.session?.user;
+
+        console.log("user:", user);
+
+        if (!user) {
+          console.log("user 없음");
+          router.replace("/login");
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        console.log("profile:", profile);
+
+        if (profile) {
+          console.log("reading-test 이동");
+          router.replace(`/reading-test?profile_id=${profile.id}`);
+        } else {
+          console.log("onboarding 이동");
+          router.replace("/onboarding");
+        }
+      } catch (err) {
+        console.error("Auth callback 오류:", err);
         router.replace("/login");
-        return;
-      }
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profile) {
-        router.replace(`/reading-test?profile_id=${profile.id}`);
-      } else {
-        router.replace("/onboarding");
       }
     };
 
