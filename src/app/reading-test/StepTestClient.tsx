@@ -29,10 +29,10 @@ const calculateBaseAR = (wpm: number) => {
 };
 
 function getComprehensionPenalty(score: number) {
-  if (score >= 90) return 0;
-  if (score >= 80) return 0.4;
-  if (score >= 70) return 0.8;
-  return 1.5;
+  if (score >= 80) return 0;
+  if (score >= 70) return 0.4;
+  if (score >= 60) return 0.8;
+  return 1.2;
 }
 
 function getBaseAR(wpm: number) {
