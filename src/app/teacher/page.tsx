@@ -158,7 +158,7 @@ useEffect(() => {
           <p>검색 결과 없음</p>
         ) : (
           sortedUsers.map((u) => {
-            const latest = latestMap[u.id];
+            const latest = latestMap[u.student_id];
             const getStatus = (x: any) => {
               if (!x) return "⚪ 데이터 없음";
 
