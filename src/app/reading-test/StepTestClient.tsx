@@ -560,7 +560,6 @@ console.log("spokenWordCount:", spokenWordCount, "baseAR:", baseAR, "accuracy:",
 let finalAR =
   baseAR -
   getAccuracyPenalty(accuracy) -
-  getPronunciationPenalty(pronunciationAccuracy) -
   getComprehensionPenalty(comprehensionScore);
 finalAR = Math.max(0.5, Math.min(5.0, finalAR));
 

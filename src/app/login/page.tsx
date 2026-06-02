@@ -43,6 +43,7 @@ export default function LoginPage() {
         },
       });
     if (error) {
+      console.log(error);
     alert(error.message);
     return;
   }
