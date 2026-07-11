@@ -16,6 +16,8 @@
     "next": "^14.2.35",
     "openai": "^6.34.0",
     "react": "^18.3.1",
+    "react-circular-progressbar": "^2.2.0",
+    "react-countup": "^6.5.3",
     "react-dom": "^18.3.1",
     "recharts": "^3.8.0"
   },
