@@ -52,7 +52,7 @@ export default function HomePage() {
         {/* ==================== Left: Hero + Feature cards ==================== */}
         <section className="flex w-full flex-col justify-center lg:w-1/2">
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-indigo-600 ring-1 ring-inset ring-indigo-100">
-            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+            <Sparkles className="h-3.5 w-3.5" aria-hidden={true} />
             AI Diagnosis Engine v2.4
           </span>
 
@@ -97,7 +97,7 @@ export default function HomePage() {
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-                <BookOpen className="h-5 w-5" aria-hidden="true" />
+                <BookOpen className="h-5 w-5" aria-hidden={true} />
               </div>
               <div>
                 <h2 className="text-lg font-bold text-slate-900">Reading App</h2>
@@ -108,7 +108,7 @@ export default function HomePage() {
             {/* Beta notice */}
             <div className="mt-6 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-5">
               <div className="flex items-center gap-2 text-indigo-700">
-                <Megaphone className="h-4 w-4" aria-hidden="true" />
+                <Megaphone className="h-4 w-4" aria-hidden={true} />
                 <span className="text-xs font-semibold uppercase tracking-wider">
                   베타 테스트 안내
                 </span>
@@ -138,7 +138,7 @@ export default function HomePage() {
                 className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 py-3.5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:ring-offset-2"
               >
                 무료 테스트 시작하기
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                <ArrowRight className="h-4 w-4" aria-hidden={true} />
               </button>
             )}
 
@@ -213,14 +213,14 @@ export default function HomePage() {
                   }}
                   className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-3.5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300/60 focus:ring-offset-2"
                 >
-                  <Rocket className="h-4 w-4" aria-hidden="true" />
+                  <Rocket className="h-4 w-4" aria-hidden={true} />
                   정보 저장하고 테스트 시작하기
                 </button>
               </div>
             )}
 
             <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-xs text-slate-400">
-              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden={true} />
               결과 저장 및 리포트 확인을 위해 로그인이 필요합니다
             </p>
           </div>
@@ -242,7 +242,7 @@ function FeatureCard({
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-        <Icon className="h-5 w-5" aria-hidden="true" />
+        <Icon className="h-5 w-5" aria-hidden={true} />
       </span>
       <h3 className="mt-3 text-sm font-semibold text-slate-900">{title}</h3>
       <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
