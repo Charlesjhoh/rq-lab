@@ -3,6 +3,17 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
+import {
+  Sparkles,
+  BookOpen,
+  Gauge,
+  Compass,
+  Gift,
+  Megaphone,
+  ArrowRight,
+  Rocket,
+  CheckCircle2,
+} from "lucide-react";
 
 export default function HomePage() {
   const router = useRouter();
@@ -36,91 +47,77 @@ export default function HomePage() {
   }, []);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
-      {/* Gradient background */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-      >
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950" />
-        <div className="absolute -top-40 -left-32 h-[28rem] w-[28rem] rounded-full bg-indigo-600/20 blur-3xl" />
-        <div className="absolute bottom-[-10rem] right-[-6rem] h-[26rem] w-[26rem] rounded-full bg-sky-500/20 blur-3xl" />
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
-            backgroundSize: "56px 56px",
-          }}
-        />
-      </div>
-
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col items-center justify-center gap-12 px-6 py-16 lg:flex-row lg:items-stretch lg:gap-16 lg:py-24">
+    <div className="-m-5 min-h-screen bg-slate-50 p-4 font-sans text-slate-900 md:p-8">
+      <main className="mx-auto flex min-h-[calc(100vh-6rem)] w-full max-w-5xl flex-col items-center justify-center gap-10 lg:flex-row lg:items-stretch lg:gap-12">
         {/* ==================== Left: Hero + Feature cards ==================== */}
-        <section className="flex w-full max-w-xl flex-col justify-center lg:w-1/2">
-          <span className="inline-flex w-fit items-center gap-2 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-indigo-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
+        <section className="flex w-full flex-col justify-center lg:w-1/2">
+          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-indigo-600 ring-1 ring-inset ring-indigo-100">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
             AI Diagnosis Engine v2.4
           </span>
 
-          <h1 className="mt-6 text-4xl font-bold tracking-tight text-white text-balance sm:text-5xl">
+          <h1 className="mt-6 text-balance text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
             AI가 분석하는
             <br />
             영어 원서 읽기 진단
           </h1>
 
-          <p className="mt-5 max-w-md text-lg leading-relaxed text-slate-300 text-pretty">
+          <p className="mt-4 max-w-md text-pretty text-base leading-relaxed text-slate-600">
             아이의 영어 원서 읽기 수준을 AI가 정밀하게 분석하고, 결과를 바탕으로
             맞춤 도서와 학습 방향을 제안해드립니다.
           </p>
 
           {/* Feature cards */}
-          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FeatureCard
+              icon={Gauge}
               title="정밀 레벨 진단"
               description="AI가 읽기 수준을 세밀하게 측정합니다."
             />
             <FeatureCard
+              icon={BookOpen}
               title="맞춤 도서 추천"
               description="진단 결과 기반 최적의 원서를 제안합니다."
             />
             <FeatureCard
+              icon={Compass}
               title="학습 방향 제안"
               description="다음 단계 성장 로드맵을 안내합니다."
             />
             <FeatureCard
+              icon={Gift}
               title="무료 베타 제공"
               description="지금은 리딩 진단을 무료로 이용할 수 있어요."
             />
           </div>
         </section>
 
-        {/* ==================== Right: Glass card ==================== */}
-        <section className="flex w-full max-w-md flex-col justify-center lg:w-1/2">
-          <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-8 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-10">
+        {/* ==================== Right: Form card ==================== */}
+        <section className="flex w-full flex-col justify-center lg:w-1/2 lg:max-w-md">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/20 text-2xl">
-                📘
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                <BookOpen className="h-5 w-5" aria-hidden="true" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">Reading App</h2>
-                <p className="text-sm text-slate-400">무료 리딩 진단 테스트</p>
+                <h2 className="text-lg font-bold text-slate-900">Reading App</h2>
+                <p className="text-sm text-slate-500">무료 리딩 진단 테스트</p>
               </div>
             </div>
 
             {/* Beta notice */}
-            <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <div className="flex items-center gap-2">
-                <span className="text-base">📢</span>
-                <b className="text-sm font-semibold text-white">
+            <div className="mt-6 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-5">
+              <div className="flex items-center gap-2 text-indigo-700">
+                <Megaphone className="h-4 w-4" aria-hidden="true" />
+                <span className="text-xs font-semibold uppercase tracking-wider">
                   베타 테스트 안내
-                </b>
+                </span>
               </div>
-              <div className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+              <div className="mt-3 space-y-2 text-sm leading-6 text-indigo-900/80">
                 <p>현재 무료로 리딩 진단 테스트를 제공하고 있습니다.</p>
                 <p>테스트 결과를 기반으로 맞춤 도서와 학습 방향을 제안합니다.</p>
               </div>
-              <p className="mt-4 border-t border-white/10 pt-4 text-xs text-slate-400">
+              <p className="mt-4 border-t border-indigo-100 pt-3 text-xs text-indigo-700/70">
                 ※ 일부 기능은 테스트 단계로 제한될 수 있습니다
               </p>
             </div>
@@ -138,15 +135,16 @@ export default function HomePage() {
                   }
                   setShowForm(true);
                 }}
-                className="mt-8 w-full rounded-2xl bg-indigo-600 py-4 text-base font-semibold text-white shadow-lg shadow-indigo-900/40 transition-all duration-200 hover:bg-indigo-500 hover:shadow-indigo-700/40 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 py-3.5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:ring-offset-2"
               >
-                👉 무료 테스트 시작하기
+                무료 테스트 시작하기
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
 
             {/* Form */}
             {showForm && (
-              <div className="mt-8 flex flex-col gap-5">
+              <div className="mt-6 flex flex-col gap-4">
                 <Field
                   label="학부모 이름"
                   placeholder="이름을 입력하세요"
@@ -213,34 +211,41 @@ export default function HomePage() {
 
                     router.push(`/reading-test?profile_id=${data.id}`);
                   }}
-                  className="mt-2 w-full rounded-2xl bg-emerald-500 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-900/40 transition-all duration-200 hover:bg-emerald-400 hover:shadow-emerald-700/40 focus:outline-none focus:ring-2 focus:ring-emerald-300/60 focus:ring-offset-2 focus:ring-offset-slate-900"
+                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-3.5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300/60 focus:ring-offset-2"
                 >
-                  🚀 정보 저장하고 테스트 시작하기
+                  <Rocket className="h-4 w-4" aria-hidden="true" />
+                  정보 저장하고 테스트 시작하기
                 </button>
               </div>
             )}
 
-            <p className="mt-6 text-center text-xs text-slate-400">
-              ※ 결과 저장 및 리포트 확인을 위해 로그인이 필요합니다
+            <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-xs text-slate-400">
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+              결과 저장 및 리포트 확인을 위해 로그인이 필요합니다
             </p>
           </div>
         </section>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
 
 function FeatureCard({
+  icon: Icon,
   title,
   description,
 }: {
+  icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   title: string;
   description: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition-colors hover:border-white/20 hover:bg-white/[0.07]">
-      <h3 className="text-sm font-semibold text-white">{title}</h3>
-      <p className="mt-1.5 text-sm leading-6 text-slate-400">{description}</p>
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+        <Icon className="h-5 w-5" aria-hidden="true" />
+      </span>
+      <h3 className="mt-3 text-sm font-semibold text-slate-900">{title}</h3>
+      <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
     </div>
   );
 }
@@ -257,14 +262,14 @@ function Field({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <label className="text-sm font-medium text-slate-200">{label}</label>
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-medium text-slate-700">{label}</label>
       <input
         type="text"
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-base text-white placeholder:text-slate-500 transition-all focus:border-indigo-400/60 focus:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-indigo-400/25"
+        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 transition-all focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/25"
       />
     </div>
   );
