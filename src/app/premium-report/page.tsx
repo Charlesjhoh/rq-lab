@@ -1,5 +1,4 @@
 "use client";
-import { createReadingCoachResult } from "@/lib/reading-coach-engine";
 import PremiumScoreCard from "@/components/ui/PremiumScoreCard";
 import { generateReadingCoach } from "@/lib/reading-coach-engine";
 import ScoreCard from "@/components/ui/ScoreCard";
@@ -140,9 +139,9 @@ function ClientPart() {
   const rec =
     result && books.length > 0
       ? getRecommendations(books, {
-          ar: result.final_ar,
-          wpm: result.wpm,
-        })
+        ar: result.final_ar,
+        wpm: result.wpm,
+      })
       : { short: [], long: [] };
 
   function getDiagnosis(latest: any) {
