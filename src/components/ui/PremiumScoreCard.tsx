@@ -55,20 +55,22 @@ export default function PremiumScoreCard({
       : "bg-rose-100 text-rose-700";
 
   return (
-    <div 
+    <div
+      className="group transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg"
       style={{
         width: "100%",
         backgroundColor: "#ffffff",
         border: "1px solid #E2E8F0",
-        borderRadius: "16px",
-        padding: "20px",
+        borderRadius: "22px",
+        padding: "22px",
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "space-between",
         minHeight: "260px",
-        textAlign: "center"
+        textAlign: "center",
+        boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04)",
       }}
     >
       {/* 타이틀 */}
