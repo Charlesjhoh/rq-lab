@@ -8,6 +8,23 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase-client";
+import {
+  Sparkles,
+  Map,
+  MapPin,
+  Stethoscope,
+  Target,
+  CalendarDays,
+  Users,
+  AlertTriangle,
+  BookOpen,
+  Rocket,
+  Clock,
+  FileText,
+  MessageCircle,
+  ArrowRight,
+  Check,
+} from "lucide-react";
 
 function getFinalDiagnosis(data: any) {
   const wrong = data?.wrong_words ?? [];
@@ -274,7 +291,19 @@ function ClientPart() {
     return { problem, cause, solution };
   }
 
-  if (!result) return <div>결과가 없습니다</div>;
+  if (!result) {
+    return (
+      <div className="-m-5 flex min-h-[80vh] items-center justify-center bg-slate-50 p-5">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white px-10 py-12 text-center shadow-sm">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+            <FileText className="h-6 w-6 text-slate-400" aria-hidden="true" />
+          </div>
+          <p className="text-base font-semibold text-slate-900">결과가 없습니다</p>
+          <p className="text-sm text-slate-500">리포트 데이터를 찾을 수 없습니다.</p>
+        </div>
+      </div>
+    );
+  }
 
   const coach = generateReadingCoach({
     ar: result.final_ar,
@@ -286,203 +315,326 @@ function ClientPart() {
   const samples = getWordSamples(result);
 
   return (
-    
-    <div style={{ padding: 20, maxWidth: 800, margin: "0 auto" }}>
-      
-{/* Premium Dashboard 구역 - 강제 인라인 2x2 바둑판 격자 스타일 */}
-<div style={{ marginTop: "40px", width: "100%" }}>
-  <div style={{ marginBottom: "24px" }}>
-    <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "#0F172A", margin: 0 }}>
-      ✨ AI Premium Reading Dashboard
-    </h2>
-    <p style={{ fontSize: "13px", color: "#64748B", marginTop: "4px", margin: 0 }}>
-      AI analyzed your child's reading performance.
-    </p>
-  </div>
-
-  {/* 💡 Tailwind 설정 무관하게 무조건 브라우저단에서 2x2 격자 배열을 강제함 */}
-  <div 
-    style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-      gap: "16px",
-      width: "100%",
-      boxSizing: "border-box"
-    }}
-  >
-    <PremiumScoreCard title="AR Level" value={result.final_ar ?? 0} max={5} unit="" variant="ar" />
-    <PremiumScoreCard title="Reading Speed" value={Math.round(result.wpm ?? 0)} max={180} unit="WPM" />
-    <PremiumScoreCard title="Accuracy" value={Math.round(result.accuracy ?? 0)} max={100} unit="%" />
-    <PremiumScoreCard title="Comprehension" value={Math.round(result.comprehension ?? 0)} max={100} unit="%" />
-  </div>
-</div>
-      <h2>🗺️ Reading Roadmap</h2>
-
-      {coach && (
-        <div
-          style={{
-            background: "#F8FAFC",
-            padding: 20,
-            borderRadius: 10,
-            marginBottom: 20,
-          }}
-        >
-          <h3>📍 Current Reading Stage</h3>
-          <p>
-            <b>{coach.stage}</b>
+    <div className="-m-5 min-h-screen bg-slate-50 p-4 font-sans text-slate-900 md:p-8">
+      <main className="mx-auto max-w-4xl space-y-8">
+        {/* Hero */}
+        <header className="overflow-hidden rounded-3xl border border-slate-800/60 bg-slate-900 px-6 py-8 text-white shadow-sm md:px-10 md:py-10">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white/90 ring-1 ring-inset ring-white/15">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+              Premium
+            </span>
+          </div>
+          <h1 className="mt-4 text-balance text-2xl font-bold tracking-tight md:text-3xl">
+            AI Premium Reading Dashboard
+          </h1>
+          <p className="mt-2 max-w-xl text-pretty text-sm leading-relaxed text-slate-300">
+            AI analyzed your child&apos;s reading performance and built a personalized roadmap.
           </p>
 
-          <h3>🎯 Core Diagnosis</h3>
-          <p>{coach.diagnosis}</p>
+          {coach && (
+            <div className="mt-6 inline-flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-3 ring-1 ring-inset ring-white/10">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
+                <MapPin className="h-4 w-4 text-white" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                  Current Reading Stage
+                </p>
+                <p className="text-base font-semibold text-white">{coach.stage}</p>
+              </div>
+            </div>
+          )}
+        </header>
 
-          <h3>📖 Reading Goal</h3>
-          <p>{coach.goal}</p>
+        {/* Score cards */}
+        <section>
+          <div className="mb-4 flex items-center gap-2">
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">
+              Performance Metrics
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <PremiumScoreCard title="AR Level" value={result.final_ar ?? 0} max={5} unit="" variant="ar" />
+            <PremiumScoreCard title="Reading Speed" value={Math.round(result.wpm ?? 0)} max={180} unit="WPM" />
+            <PremiumScoreCard title="Accuracy" value={Math.round(result.accuracy ?? 0)} max={100} unit="%" />
+            <PremiumScoreCard title="Comprehension" value={Math.round(result.comprehension ?? 0)} max={100} unit="%" />
+          </div>
+        </section>
 
-          <h3>🗓️ 4-Week Reading Roadmap</h3>
-          <ul>
-            {coach.roadmap.map((item, index) => (
-              <li key={index}>{item}</li>
-            ))}
-          </ul>
+        {/* Roadmap */}
+        {coach && (
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Map className="h-5 w-5 text-indigo-600" aria-hidden="true" />
+              <h2 className="text-lg font-semibold tracking-tight text-slate-900">
+                Reading Roadmap
+              </h2>
+            </div>
 
-          <h3>👨‍👩‍👧 Parent Action</h3>
-          <ul>
-            {coach.parentAction.map((item, index) => (
-              <li key={index}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+            {/* Diagnosis + Goal */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-slate-500">
+                  <Stethoscope className="h-4 w-4" aria-hidden="true" />
+                  <span className="text-xs font-semibold uppercase tracking-wider">Core Diagnosis</span>
+                </div>
+                <p className="mt-3 text-sm leading-relaxed text-slate-700">{coach.diagnosis}</p>
+              </div>
+              <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-indigo-600">
+                  <Target className="h-4 w-4" aria-hidden="true" />
+                  <span className="text-xs font-semibold uppercase tracking-wider">Reading Goal</span>
+                </div>
+                <p className="mt-3 text-sm font-medium leading-relaxed text-indigo-900">{coach.goal}</p>
+              </div>
+            </div>
 
-      <hr style={{ margin: "24px 0" }} />
+            {/* 4-Week roadmap timeline */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+              <div className="flex items-center gap-2 text-slate-500">
+                <CalendarDays className="h-4 w-4" aria-hidden="true" />
+                <span className="text-xs font-semibold uppercase tracking-wider">4-Week Reading Roadmap</span>
+              </div>
+              <ol className="mt-5 space-y-4">
+                {coach.roadmap.map((item, index) => (
+                  <li key={index} className="flex items-start gap-4">
+                    <div className="relative flex flex-col items-center">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
+                        {index + 1}
+                      </span>
+                      {index < coach.roadmap.length - 1 && (
+                        <span className="mt-1 h-full w-px flex-1 bg-slate-200" aria-hidden="true" />
+                      )}
+                    </div>
+                    <div className="flex-1 pb-1">
+                      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                        Week {index + 1}
+                      </p>
+                      <p className="mt-0.5 text-sm leading-relaxed text-slate-700">{item}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
 
-
-      <div style={{ marginTop: 20 }}>
-        <h4>🔍 대표 오류 단어</h4>
-        <p>발음 오류: {samples.pronunciation.join(", ")}</p>
-        <p>읽기 오류: {samples.missing.join(", ")}</p>
-      </div>
-
-      {/* 📚 추천 도서 */}
-      <div style={{ marginTop: 30 }}>
-        <h3>📚 추천 도서</h3>
-
-        {/* 짧은 책 */}
-        {rec.short.map((b, i) => (
-          <div
-            key={i}
-            style={{
-              background: "#F8FAFC",
-              border: "1px solid #E5E7EB",
-              borderRadius: 10,
-              padding: 16,
-              marginBottom: 16,
-            }}
-          >
-            <h4 style={{ margin: 0 }}>
-              📘 {i + 1}. {b.title}
-            </h4>
-
-            <p style={{ margin: "8px 0", color: "#666", fontSize: 13 }}>
-              📊 {b.word_count.toLocaleString()} words
-              &nbsp;&nbsp;|&nbsp;&nbsp;
-              ⏱ 예상 {getReadingTime(b, result)}분
-            </p>
-
-            <div style={{ marginTop: 10 }}>
-              <b>추천 이유</b>
-              <ul style={{ marginTop: 6, paddingLeft: 20 }}>
-                {getRecommendationReason(b, result).map((reason, idx) => (
-                  <li key={idx}>{reason}</li>
+            {/* Parent action */}
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 shadow-sm md:p-6">
+              <div className="flex items-center gap-2 text-emerald-700">
+                <Users className="h-4 w-4" aria-hidden="true" />
+                <span className="text-xs font-semibold uppercase tracking-wider">Parent Action</span>
+              </div>
+              <ul className="mt-4 space-y-3">
+                {coach.parentAction.map((item, index) => (
+                  <li key={index} className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+                      <Check className="h-3 w-3" aria-hidden="true" />
+                    </span>
+                    <span className="text-sm leading-relaxed text-emerald-900">{item}</span>
+                  </li>
                 ))}
               </ul>
             </div>
+          </section>
+        )}
 
-            <p
-              style={{
-                marginTop: 10,
-                color: "#2563EB",
-                fontWeight: 600,
-                fontSize: 14,
-              }}
-            >
-               {getReadingPlan(b, result)}
-            </p>
+        {/* Error words */}
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-500" aria-hidden="true" />
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">대표 오류 단어</h2>
           </div>
-        ))}
+          <div className="mt-5 grid gap-5 md:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">발음 오류</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {samples.pronunciation.length > 0 ? (
+                  samples.pronunciation.map((word: string, i: number) => (
+                    <span
+                      key={i}
+                      className="rounded-lg bg-rose-50 px-3 py-1.5 text-sm font-medium text-rose-700 ring-1 ring-inset ring-rose-100"
+                    >
+                      {word}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-sm text-slate-400">없음</span>
+                )}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">읽기 오류</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {samples.missing.length > 0 ? (
+                  samples.missing.map((word: string, i: number) => (
+                    <span
+                      key={i}
+                      className="rounded-lg bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 ring-1 ring-inset ring-amber-100"
+                    >
+                      {word}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-sm text-slate-400">없음</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
 
-        {/* 긴 책 */}
-        {rec.long.length > 0 && (
-          <>
-            <h3 style={{ marginTop: 30 }}>
-              🚀 도전 읽기 (긴 책)
-            </h3>
+        {/* Recommended books */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-indigo-600" aria-hidden="true" />
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">추천 도서</h2>
+          </div>
 
-            {rec.long.map((b, i) => (
-              <div
+          <div className="grid gap-4">
+            {rec.short.map((b, i) => (
+              <article
                 key={i}
-                style={{
-                  background: "#FFF8E8",
-                  border: "1px solid #F5D88A",
-                  borderRadius: 10,
-                  padding: 16,
-                  marginBottom: 16,
-                }}
+                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md md:p-6"
               >
-                <h4 style={{ margin: 0 }}>
-                  🚀 {i + 1}. {b.title}
-                </h4>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                      <BookOpen className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-indigo-500">
+                        추천 {i + 1}
+                      </p>
+                      <h3 className="text-base font-semibold text-slate-900">{b.title}</h3>
+                    </div>
+                  </div>
+                </div>
 
-                <p style={{ margin: "8px 0", color: "#666", fontSize: 13 }}>
-                  📊 {b.word_count.toLocaleString()} words
-                  &nbsp;&nbsp;|&nbsp;&nbsp;
-                  ⏱ 예상 {getReadingTime(b, result)}분
-                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                    <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                    {b.word_count.toLocaleString()} words
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                    <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                    예상 {getReadingTime(b, result)}분
+                  </span>
+                </div>
 
-                <div style={{ marginTop: 10 }}>
-                  <b>도전 이유</b>
-                  <ul style={{ marginTop: 6, paddingLeft: 20 }}>
+                <div className="mt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">추천 이유</p>
+                  <ul className="mt-2 space-y-2">
                     {getRecommendationReason(b, result).map((reason, idx) => (
-                      <li key={idx}>{reason}</li>
+                      <li key={idx} className="flex items-start gap-2 text-sm leading-relaxed text-slate-600">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" aria-hidden="true" />
+                        {reason}
+                      </li>
                     ))}
                   </ul>
                 </div>
 
-                <p
-                  style={{
-                    marginTop: 10,
-                    color: "#D97706",
-                    fontWeight: 600,
-                    fontSize: 14,
-                  }}
-                >
-                   {getReadingPlan(b, result)}
-                </p>
-              </div>
+                <div className="mt-4 rounded-xl bg-indigo-50/70 px-4 py-3 text-sm font-semibold text-indigo-700">
+                  {getReadingPlan(b, result)}
+                </div>
+              </article>
             ))}
-          </>
-        )}
-      </div>
+          </div>
 
-      <hr style={{ margin: "30px 0" }} />
+          {rec.long.length > 0 && (
+            <>
+              <div className="flex items-center gap-2 pt-2">
+                <Rocket className="h-5 w-5 text-amber-500" aria-hidden="true" />
+                <h3 className="text-base font-semibold tracking-tight text-slate-900">
+                  도전 읽기 (긴 책)
+                </h3>
+              </div>
 
-      <div style={{ textAlign: "center" }}>
-        <p>더 자세한 분석을 확인하려면 상담이 필요합니다.</p>
-        <button
-          onClick={() => {
-            window.open("https://open.kakao.com/o/gIcwAHli");
-          }}
-        >
-          📞 1:1 상담 신청하기
-        </button>
-      </div>
+              <div className="grid gap-4">
+                {rec.long.map((b, i) => (
+                  <article
+                    key={i}
+                    className="rounded-2xl border border-amber-200 bg-amber-50/40 p-5 shadow-sm transition-shadow hover:shadow-md md:p-6"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+                        <Rocket className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-600">
+                          도전 {i + 1}
+                        </p>
+                        <h3 className="text-base font-semibold text-slate-900">{b.title}</h3>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/70 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-100">
+                        <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                        {b.word_count.toLocaleString()} words
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/70 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-100">
+                        <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                        예상 {getReadingTime(b, result)}분
+                      </span>
+                    </div>
+
+                    <div className="mt-4">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-amber-600/80">도전 이유</p>
+                      <ul className="mt-2 space-y-2">
+                        {getRecommendationReason(b, result).map((reason, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-sm leading-relaxed text-slate-600">
+                            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" aria-hidden="true" />
+                            {reason}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="mt-4 rounded-xl bg-amber-100/70 px-4 py-3 text-sm font-semibold text-amber-800">
+                      {getReadingPlan(b, result)}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+
+        {/* CTA */}
+        <section className="overflow-hidden rounded-3xl border border-slate-800/60 bg-slate-900 px-6 py-8 text-center text-white shadow-sm md:px-10 md:py-10">
+          <h2 className="text-balance text-xl font-bold tracking-tight md:text-2xl">
+            더 자세한 분석이 필요하신가요?
+          </h2>
+          <p className="mx-auto mt-2 max-w-md text-pretty text-sm leading-relaxed text-slate-300">
+            더 자세한 분석을 확인하려면 상담이 필요합니다.
+          </p>
+          <button
+            onClick={() => {
+              window.open("https://open.kakao.com/o/gIcwAHli");
+            }}
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100"
+          >
+            <MessageCircle className="h-4 w-4" aria-hidden="true" />
+            1:1 상담 신청하기
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </section>
+      </main>
     </div>
   );
 }
 
 export default function PremiumReportPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="-m-5 flex min-h-[80vh] items-center justify-center bg-slate-50 p-5">
+          <div className="flex items-center gap-3 text-sm font-medium text-slate-500">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+            Loading...
+          </div>
+        </div>
+      }
+    >
       <ClientPart />
     </Suspense>
   );
