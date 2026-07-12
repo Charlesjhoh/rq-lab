@@ -305,10 +305,10 @@ function ClientPart() {
   }
 
   const coach = generateReadingCoach({
-    ar: result.final_ar,
-    wpm: result.wpm,
-    accuracy: result.accuracy,
-    comprehension: result.comprehension,
+    ar: result.final_ar ?? 0,
+    wpm: result.wpm ?? 0,
+    accuracy: result.accuracy ?? 0,
+    comprehension: result.comprehension ?? 0,
   });
 
   const samples = getWordSamples(result);
