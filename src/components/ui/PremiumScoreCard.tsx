@@ -81,7 +81,7 @@ export default function PremiumScoreCard({
       {/* 게이지 구역 (동적 색상 gaugeColor 전달) */}
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", width: "100%", flexGrow: 1 }}>
         <CircularGauge value={percentage} size={120} strokeWidth={14} color={gaugeColor}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyBox: "center" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
             <span style={{ fontSize: "22px", fontWeight: "900", color: "#0F172A", lineHeight: 1 }}>
               <CountUp end={value} decimals={variant === "ar" ? 1 : 0} duration={1.2} />
             </span>
