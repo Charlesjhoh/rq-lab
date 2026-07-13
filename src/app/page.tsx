@@ -5,15 +5,12 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import {
   Sparkles,
-  BookOpen,
   Gauge,
-  Compass,
-  Gift,
-  Megaphone,
+  Target,
+  BookOpen,
   ArrowRight,
-  Rocket,
-  CheckCircle2,
   ShieldCheck,
+  Rocket,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -48,242 +45,181 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="-m-5 min-h-screen bg-slate-50 font-sans text-slate-900">
-      {/* ==================== Hero (dark gradient) ==================== */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900">
-        {/* soft glow accents */}
-        <div
-          className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl"
-          aria-hidden={true}
-        />
-        <div
-          className="pointer-events-none absolute -right-16 top-16 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl"
-          aria-hidden={true}
-        />
-
-        <div className="mx-auto w-full max-w-[1200px] px-6 pb-20 pt-16 md:px-10 md:pb-28 md:pt-24">
-          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-indigo-200 ring-1 ring-inset ring-white/15 backdrop-blur">
+    <div className="-m-5 min-h-screen overflow-y-auto bg-gradient-to-br from-white via-slate-50 to-indigo-50 font-sans text-slate-900">
+      <div className="mx-auto flex min-h-screen w-full max-w-xl flex-col items-center justify-center px-4 py-10">
+        {/* ─── Part 1: Service intro card ─── */}
+        <section className="w-full rounded-3xl border border-white/60 bg-white/70 p-8 text-center shadow-xl shadow-slate-900/5 backdrop-blur-md">
+          <span className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600">
             <Sparkles className="h-3.5 w-3.5" aria-hidden={true} />
-            AI Diagnosis Engine v2.4
+            Free Beta v2.4
           </span>
 
-          <h1 className="mt-6 max-w-3xl text-balance text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl md:text-6xl">
-            AI가 분석하는
-            <br />
-            <span className="bg-gradient-to-r from-indigo-300 to-emerald-200 bg-clip-text text-transparent">
-              영어 원서 읽기 진단
-            </span>
+          <h1 className="mb-4 text-balance text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">
+            AI Reading Assessment
           </h1>
-
-          <p className="mt-6 max-w-xl text-pretty text-base leading-relaxed text-slate-300 md:text-lg">
-            아이의 영어 원서 읽기 수준을 AI가 정밀하게 분석하고, 결과를 바탕으로
-            맞춤 도서와 학습 방향을 제안해드립니다.
+          <p className="mx-auto mb-8 max-w-md text-pretty text-base leading-relaxed text-slate-500">
+            AI가 아이의 영어 읽기를 3분 안에 정밀 분석합니다. 잠재력을 발견해
+            보세요.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-400">
-            <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden={true} />
-              무료 베타 진행 중
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <ShieldCheck className="h-4 w-4 text-indigo-300" aria-hidden={true} />
-              안전한 결과 저장
-            </span>
+          {/* Minimal dashboard metric cards */}
+          <div className="grid grid-cols-1 gap-3 text-left sm:grid-cols-2">
+            <MetricCard
+              icon={Gauge}
+              label="Reading Speed"
+              value="WPM 측정"
+            />
+            <MetricCard icon={Target} label="Accuracy" value="발음 정확도" />
+            <MetricCard
+              icon={BookOpen}
+              label="Estimated AR"
+              value="리딩 레벨 산정"
+            />
+            <MetricCard
+              icon={Sparkles}
+              label="Comprehension"
+              value="이해도 진단"
+            />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ==================== Main content ==================== */}
-      <main className="mx-auto -mt-12 w-full max-w-[1200px] px-6 pb-16 md:-mt-16 md:px-10">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
-          {/* ---------- Left: Feature cards ---------- */}
-          <section className="order-2 lg:order-1 lg:pt-4">
-            <h2 className="text-lg font-bold tracking-tight text-slate-900">
-              무엇을 제공하나요?
-            </h2>
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              진단부터 성장 로드맵까지, 한 번에 확인할 수 있습니다.
-            </p>
+        {/* ─── Divider ─── */}
+        <div className="my-8 w-full border-t-2 border-dashed border-slate-200/60" />
 
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FeatureCard
-                icon={Gauge}
-                title="정밀 레벨 진단"
-                description="AI가 읽기 수준을 세밀하게 측정합니다."
-              />
-              <FeatureCard
-                icon={BookOpen}
-                title="맞춤 도서 추천"
-                description="진단 결과 기반 최적의 원서를 제안합니다."
-              />
-              <FeatureCard
-                icon={Compass}
-                title="학습 방향 제안"
-                description="다음 단계 성장 로드맵을 안내합니다."
-              />
-              <FeatureCard
-                icon={Gift}
-                title="무료 베타 제공"
-                description="지금은 리딩 진단을 무료로 이용할 수 있어요."
-              />
+        {/* ─── Part 2: Entry trigger / input card ─── */}
+        {!showForm ? (
+          <button
+            onClick={async () => {
+              const {
+                data: { user },
+              } = await supabase.auth.getUser();
+              if (!user) {
+                router.push("/login");
+                return;
+              }
+              setShowForm(true);
+            }}
+            className="group flex h-[72px] w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 text-xl font-bold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-indigo-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:ring-offset-2"
+          >
+            <span>무료 테스트 시작하기</span>
+            <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden={true} />
+          </button>
+        ) : (
+          <div className="flex w-full flex-col gap-4 rounded-3xl border border-slate-200/60 bg-white p-6 shadow-xl shadow-slate-900/5 duration-500 animate-in fade-in slide-in-from-bottom-4">
+            <div className="border-b border-slate-100 pb-2 text-center">
+              <h2 className="text-lg font-bold text-slate-800">
+                Student Information
+              </h2>
             </div>
-          </section>
 
-          {/* ---------- Right: Form card ---------- */}
-          <section className="order-1 lg:order-2">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/5 sm:p-8">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-                  <BookOpen className="h-5 w-5" aria-hidden={true} />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">Reading App</h2>
-                  <p className="text-sm text-slate-500">무료 리딩 진단 테스트</p>
-                </div>
-              </div>
+            <Field
+              label="Parent Name"
+              placeholder="학부모 성함을 입력하세요"
+              value={parentName}
+              onChange={setParentName}
+            />
+            <Field
+              label="Student Name"
+              placeholder="학생 이름을 입력하세요"
+              value={studentName}
+              onChange={setStudentName}
+            />
+            <Field
+              label="Birth Date"
+              type="date"
+              value={birth}
+              onChange={setBirth}
+            />
+          </div>
+        )}
 
-              {/* Beta notice */}
-              <div className="mt-6 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-5">
-                <div className="flex items-center gap-2 text-indigo-700">
-                  <Megaphone className="h-4 w-4" aria-hidden={true} />
-                  <span className="text-xs font-semibold uppercase tracking-wider">
-                    베타 테스트 안내
-                  </span>
-                </div>
-                <div className="mt-3 space-y-2 text-sm leading-6 text-indigo-900/80">
-                  <p>현재 무료로 리딩 진단 테스트를 제공하고 있습니다.</p>
-                  <p>테스트 결과를 기반으로 맞춤 도서와 학습 방향을 제안합니다.</p>
-                </div>
-                <p className="mt-4 border-t border-indigo-100 pt-3 text-xs text-indigo-700/70">
-                  ※ 일부 기능은 테스트 단계로 제한될 수 있습니다
-                </p>
-              </div>
+        {/* ─── Part 3: Final submit section ─── */}
+        {showForm && (
+          <>
+            <div className="my-8 w-full border-t-2 border-dashed border-slate-200/60" />
+            <button
+              onClick={async () => {
+                const {
+                  data: { user },
+                } = await supabase.auth.getUser();
 
-              {/* First entry button */}
-              {!showForm && (
-                <button
-                  onClick={async () => {
-                    const {
-                      data: { user },
-                    } = await supabase.auth.getUser();
-                    if (!user) {
-                      router.push("/login");
-                      return;
+                if (!user) {
+                  alert("로그인 후 이용해주세요");
+                  router.push("/login");
+                  return;
+                }
+
+                if (!parentName || !studentName || !birth) {
+                  alert("모든 정보를 입력해주세요");
+                  return;
+                }
+
+                const { data, error } = await supabase
+                  .from("profiles")
+                  .upsert(
+                    {
+                      id: user.id,
+                      student_name: studentName,
+                      parent_name: parentName,
+                      birth: birth,
+                    },
+                    {
+                      onConflict: "id",
                     }
-                    setShowForm(true);
-                  }}
-                  className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 py-3.5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:ring-offset-2"
-                >
-                  무료 테스트 시작하기
-                  <ArrowRight className="h-4 w-4" aria-hidden={true} />
-                </button>
-              )}
+                  )
+                  .select()
+                  .single();
 
-              {/* Form */}
-              {showForm && (
-                <div className="mt-6 flex flex-col gap-4">
-                  <Field
-                    label="학부모 이름"
-                    placeholder="이름을 입력하세요"
-                    value={parentName}
-                    onChange={setParentName}
-                  />
-                  <Field
-                    label="학생 이름"
-                    placeholder="이름을 입력하세요"
-                    value={studentName}
-                    onChange={setStudentName}
-                  />
-                  <Field
-                    label="생년월일"
-                    placeholder="예: 2015-03-21"
-                    value={birth}
-                    onChange={setBirth}
-                  />
+                if (error) {
+                  console.error("❌ DB 에러:", error);
+                  alert("저장 실패");
+                  return;
+                }
 
-                  <button
-                    onClick={async () => {
-                      const {
-                        data: { user },
-                      } = await supabase.auth.getUser();
+                if (!data) {
+                  console.error("❌ data 없음");
+                  alert("데이터 없음");
+                  return;
+                }
 
-                      if (!user) {
-                        alert("로그인 후 이용해주세요");
-                        router.push("/login");
-                        return;
-                      }
+                router.push(`/reading-test?profile_id=${data.id}`);
+              }}
+              className="flex h-[72px] w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 text-xl font-bold text-white shadow-xl transition-all hover:-translate-y-0.5 hover:bg-emerald-400 hover:shadow-2xl focus:outline-none focus:ring-2 focus:ring-emerald-300/60 focus:ring-offset-2"
+            >
+              <Rocket className="h-5 w-5" aria-hidden={true} />
+              <span>정보 저장하고 테스트 시작하기</span>
+            </button>
+          </>
+        )}
 
-                      if (!parentName || !studentName || !birth) {
-                        alert("모든 정보를 입력해주세요");
-                        return;
-                      }
-
-                      const { data, error } = await supabase
-                        .from("profiles")
-                        .upsert(
-                          {
-                            id: user.id,
-                            student_name: studentName,
-                            parent_name: parentName,
-                            birth: birth,
-                          },
-                          {
-                            onConflict: "id",
-                          }
-                        )
-                        .select()
-                        .single();
-
-                      if (error) {
-                        console.error("❌ DB 에러:", error);
-                        alert("저장 실패");
-                        return;
-                      }
-
-                      if (!data) {
-                        console.error("❌ data 없음");
-                        alert("데이터 없음");
-                        return;
-                      }
-
-                      router.push(`/reading-test?profile_id=${data.id}`);
-                    }}
-                    className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-3.5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300/60 focus:ring-offset-2"
-                  >
-                    <Rocket className="h-4 w-4" aria-hidden={true} />
-                    정보 저장하고 테스트 시작하기
-                  </button>
-                </div>
-              )}
-
-              <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-xs text-slate-400">
-                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden={true} />
-                결과 저장 및 리포트 확인을 위해 로그인이 필요합니다
-              </p>
-            </div>
-          </section>
+        {/* Footer security notice */}
+        <div className="mt-8 flex items-center gap-1.5 text-xs text-slate-400">
+          <ShieldCheck className="h-4 w-4 text-slate-400" aria-hidden={true} />
+          <span>결과 저장 및 리포트 확인을 위해 로그인이 필요합니다.</span>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
 
-function FeatureCard({
+function MetricCard({
   icon: Icon,
-  title,
-  description,
+  label,
+  value,
 }: {
   icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
-  title: string;
-  description: string;
+  label: string;
+  value: string;
 }) {
   return (
-    <div className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-md">
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 transition-colors group-hover:bg-indigo-100">
-        <Icon className="h-5 w-5" aria-hidden={true} />
-      </span>
-      <h3 className="mt-3 text-sm font-semibold text-slate-900">{title}</h3>
-      <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
+    <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+      <div className="rounded-xl bg-white p-2 text-indigo-600 shadow-sm">
+        <Icon className="h-4 w-4" aria-hidden={true} />
+      </div>
+      <div>
+        <p className="text-xs font-medium text-slate-400">{label}</p>
+        <p className="text-sm font-semibold text-slate-700">{value}</p>
+      </div>
     </div>
   );
 }
@@ -293,21 +229,27 @@ function Field({
   placeholder,
   value,
   onChange,
+  type = "text",
 }: {
   label: string;
-  placeholder: string;
+  placeholder?: string;
   value: string;
   onChange: (value: string) => void;
+  type?: string;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-slate-700">{label}</label>
+    <div className="flex flex-col gap-2 px-2 py-1 sm:flex-row sm:items-center sm:gap-4">
+      <label className="text-sm font-semibold text-slate-500 sm:w-28 sm:text-right">
+        {label}
+      </label>
       <input
-        type="text"
+        type={type}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 transition-all focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/25"
+        className={`flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 ${
+          type === "date" ? "text-center" : "text-center sm:text-left"
+        }`}
       />
     </div>
   );
