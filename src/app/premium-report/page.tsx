@@ -23,6 +23,7 @@ import {
   MessageCircle,
   ArrowRight,
   Check,
+  Activity,
 } from "lucide-react";
 
 function getFinalDiagnosis(data: any) {
@@ -314,73 +315,71 @@ function ClientPart() {
   const samples = getWordSamples(result);
 
   return (
-    <div className="-m-5 min-h-screen bg-slate-50 p-4 font-sans text-slate-900 md:p-8">
-      <main className="mx-auto max-w-4xl space-y-8">
+    <div className="-m-5 min-h-screen bg-slate-50 p-4 font-sans text-slate-900 md:p-6">
+      <main className="mx-auto max-w-[1200px] space-y-5">
         {/* Hero */}
-        <header className="overflow-hidden rounded-3xl border border-slate-800/60 bg-slate-900 px-6 py-8 text-white shadow-sm md:px-10 md:py-10">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white/90 ring-1 ring-inset ring-white/15">
-              <Sparkles className="h-3.5 w-3.5" aria-hidden={true} />
-              Premium
-            </span>
-          </div>
-          <h1 className="mt-4 text-balance text-2xl font-bold tracking-tight md:text-3xl">
-            AI Premium Reading Dashboard
-          </h1>
-          <p className="mt-2 max-w-xl text-pretty text-sm leading-relaxed text-slate-300">
-            AI analyzed your child&apos;s reading performance and built a personalized roadmap.
-          </p>
-
-          {coach && (
-            <div className="mt-6 inline-flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-3 ring-1 ring-inset ring-white/10">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
-                <MapPin className="h-4 w-4 text-white" aria-hidden={true} />
-              </div>
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                  Current Reading Stage
-                </p>
-                <p className="text-base font-semibold text-white">{coach.stage}</p>
-              </div>
+        <header className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 px-6 py-7 text-white shadow-sm md:px-8">
+          <div
+            className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-indigo-500/20 blur-3xl"
+            aria-hidden={true}
+          />
+          <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white/90 ring-1 ring-inset ring-white/15">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden={true} />
+                Premium
+              </span>
+              <h1 className="mt-3 text-balance text-2xl font-bold tracking-tight md:text-3xl">
+                AI Premium Reading Dashboard
+              </h1>
+              <p className="mt-1.5 max-w-lg text-pretty text-sm leading-relaxed text-slate-300">
+                AI analyzed your child&apos;s reading performance and built a personalized roadmap.
+              </p>
             </div>
-          )}
+
+            {coach && (
+              <div className="flex shrink-0 items-center gap-3 rounded-2xl bg-white/5 px-4 py-3 ring-1 ring-inset ring-white/10">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10">
+                  <MapPin className="h-5 w-5 text-white" aria-hidden={true} />
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                    Current Reading Stage
+                  </p>
+                  <p className="text-lg font-semibold text-white">{coach.stage}</p>
+                </div>
+              </div>
+            )}
+          </div>
         </header>
 
-        {/* Score cards */}
-        <section>
-          <div className="mb-4 flex items-center gap-2">
-            <h2 className="text-lg font-semibold tracking-tight text-slate-900">
-              Performance Metrics
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <PremiumScoreCard title="AR Level" value={result.final_ar ?? 0} max={5} unit="" variant="ar" />
-            <PremiumScoreCard title="Reading Speed" value={Math.round(result.wpm ?? 0)} max={180} unit="WPM" />
-            <PremiumScoreCard title="Accuracy" value={Math.round(result.accuracy ?? 0)} max={100} unit="%" />
-            <PremiumScoreCard title="Comprehension" value={Math.round(result.comprehension ?? 0)} max={100} unit="%" />
-          </div>
-        </section>
-
-        {/* Roadmap */}
-        {coach && (
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Map className="h-5 w-5 text-indigo-600" aria-hidden={true} />
-              <h2 className="text-lg font-semibold tracking-tight text-slate-900">
-                Reading Roadmap
+        {/* Dashboard row: 2x2 metrics + diagnosis/goal */}
+        <section className="grid gap-5 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <div className="mb-3 flex items-center gap-2">
+              <Activity className="h-4 w-4 text-indigo-600" aria-hidden={true} />
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
+                Performance Metrics
               </h2>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <PremiumScoreCard title="AR Level" value={result.final_ar ?? 0} max={5} unit="" variant="ar" />
+              <PremiumScoreCard title="Reading Speed" value={Math.round(result.wpm ?? 0)} max={180} unit="WPM" />
+              <PremiumScoreCard title="Accuracy" value={Math.round(result.accuracy ?? 0)} max={100} unit="%" />
+              <PremiumScoreCard title="Comprehension" value={Math.round(result.comprehension ?? 0)} max={100} unit="%" />
+            </div>
+          </div>
 
-            {/* Diagnosis + Goal */}
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          {coach && (
+            <div className="flex flex-col gap-4">
+              <div className="flex-1 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-2 text-slate-500">
                   <Stethoscope className="h-4 w-4" aria-hidden={true} />
                   <span className="text-xs font-semibold uppercase tracking-wider">Core Diagnosis</span>
                 </div>
                 <p className="mt-3 text-sm leading-relaxed text-slate-700">{coach.diagnosis}</p>
               </div>
-              <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-5 shadow-sm">
+              <div className="flex-1 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-5 shadow-sm">
                 <div className="flex items-center gap-2 text-indigo-600">
                   <Target className="h-4 w-4" aria-hidden={true} />
                   <span className="text-xs font-semibold uppercase tracking-wider">Reading Goal</span>
@@ -388,25 +387,30 @@ function ClientPart() {
                 <p className="mt-3 text-sm font-medium leading-relaxed text-indigo-900">{coach.goal}</p>
               </div>
             </div>
+          )}
+        </section>
 
+        {/* Roadmap timeline + Parent action */}
+        {coach && (
+          <section className="grid gap-5 lg:grid-cols-2">
             {/* 4-Week roadmap timeline */}
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
               <div className="flex items-center gap-2 text-slate-500">
                 <CalendarDays className="h-4 w-4" aria-hidden={true} />
                 <span className="text-xs font-semibold uppercase tracking-wider">4-Week Reading Roadmap</span>
               </div>
-              <ol className="mt-5 space-y-4">
+              <ol className="mt-5 space-y-3.5">
                 {coach.roadmap.map((item, index) => (
-                  <li key={index} className="flex items-start gap-4">
-                    <div className="relative flex flex-col items-center">
+                  <li key={index} className="flex items-start gap-3.5">
+                    <div className="relative flex flex-col items-center self-stretch">
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
                         {index + 1}
                       </span>
                       {index < coach.roadmap.length - 1 && (
-                        <span className="mt-1 h-full w-px flex-1 bg-slate-200" aria-hidden={true} />
+                        <span className="mt-1 w-px flex-1 bg-slate-200" aria-hidden={true} />
                       )}
                     </div>
-                    <div className="flex-1 pb-1">
+                    <div className="flex-1 pb-0.5">
                       <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
                         Week {index + 1}
                       </p>
@@ -417,33 +421,36 @@ function ClientPart() {
               </ol>
             </div>
 
-            {/* Parent action */}
-            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 shadow-sm md:p-6">
-              <div className="flex items-center gap-2 text-emerald-700">
+            {/* Parent action — green checklist cards */}
+            <div>
+              <div className="mb-3 flex items-center gap-2 text-emerald-700">
                 <Users className="h-4 w-4" aria-hidden={true} />
                 <span className="text-xs font-semibold uppercase tracking-wider">Parent Action</span>
               </div>
-              <ul className="mt-4 space-y-3">
+              <div className="space-y-3">
                 {coach.parentAction.map((item, index) => (
-                  <li key={index} className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
-                      <Check className="h-3 w-3" aria-hidden={true} />
+                  <div
+                    key={index}
+                    className="flex items-start gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 shadow-sm"
+                  >
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+                      <Check className="h-3.5 w-3.5" aria-hidden={true} />
                     </span>
                     <span className="text-sm leading-relaxed text-emerald-900">{item}</span>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </section>
         )}
 
-        {/* Error words */}
+        {/* Weak words — colored chips */}
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500" aria-hidden={true} />
-            <h2 className="text-lg font-semibold tracking-tight text-slate-900">대표 오류 단어</h2>
+            <AlertTriangle className="h-4 w-4 text-amber-500" aria-hidden={true} />
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">대표 오류 단어</h2>
           </div>
-          <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div className="mt-4 grid gap-5 md:grid-cols-2">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">발음 오류</p>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -481,30 +488,28 @@ function ClientPart() {
           </div>
         </section>
 
-        {/* Recommended books */}
+        {/* Recommended books — premium cards */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-indigo-600" aria-hidden={true} />
-            <h2 className="text-lg font-semibold tracking-tight text-slate-900">추천 도서</h2>
+            <BookOpen className="h-4 w-4 text-indigo-600" aria-hidden={true} />
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">추천 도서</h2>
           </div>
 
-          <div className="grid gap-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {rec.short.map((b, i) => (
               <article
                 key={i}
-                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md md:p-6"
+                className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                      <BookOpen className="h-5 w-5" aria-hidden={true} />
-                    </span>
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-indigo-500">
-                        추천 {i + 1}
-                      </p>
-                      <h3 className="text-base font-semibold text-slate-900">{b.title}</h3>
-                    </div>
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                    <BookOpen className="h-5 w-5" aria-hidden={true} />
+                  </span>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-indigo-500">
+                      추천 {i + 1}
+                    </p>
+                    <h3 className="text-base font-semibold text-slate-900">{b.title}</h3>
                   </div>
                 </div>
 
@@ -540,18 +545,18 @@ function ClientPart() {
 
           {rec.long.length > 0 && (
             <>
-              <div className="flex items-center gap-2 pt-2">
-                <Rocket className="h-5 w-5 text-amber-500" aria-hidden={true} />
-                <h3 className="text-base font-semibold tracking-tight text-slate-900">
+              <div className="flex items-center gap-2 pt-1">
+                <Rocket className="h-4 w-4 text-amber-500" aria-hidden={true} />
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
                   도전 읽기 (긴 책)
                 </h3>
               </div>
 
-              <div className="grid gap-4">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {rec.long.map((b, i) => (
                   <article
                     key={i}
-                    className="rounded-2xl border border-amber-200 bg-amber-50/40 p-5 shadow-sm transition-shadow hover:shadow-md md:p-6"
+                    className="flex flex-col rounded-2xl border border-amber-200 bg-amber-50/40 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
                   >
                     <div className="flex items-start gap-3">
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
@@ -599,7 +604,7 @@ function ClientPart() {
         </section>
 
         {/* CTA */}
-        <section className="overflow-hidden rounded-3xl border border-slate-800/60 bg-slate-900 px-6 py-8 text-center text-white shadow-sm md:px-10 md:py-10">
+        <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 px-6 py-8 text-center text-white shadow-sm md:px-10">
           <h2 className="text-balance text-xl font-bold tracking-tight md:text-2xl">
             더 자세한 분석이 필요하신가요?
           </h2>
