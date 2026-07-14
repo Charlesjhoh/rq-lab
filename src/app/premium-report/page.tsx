@@ -293,7 +293,7 @@ function ClientPart() {
 
   if (!result) {
     return (
-      <div className="-m-5 flex min-h-[80vh] items-center justify-center bg-slate-50 p-5">
+      <div className="flex min-h-[80vh] items-center justify-center bg-slate-50 p-5">
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white px-10 py-12 text-center shadow-sm">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
             <FileText className="h-6 w-6 text-slate-400" aria-hidden={true} />
@@ -315,7 +315,7 @@ function ClientPart() {
   const samples = getWordSamples(result);
 
   return (
-    <div className="-m-5 min-h-screen bg-slate-50 p-4 font-sans text-slate-900 md:p-6">
+    <div className="min-h-screen bg-slate-50 p-4 font-sans text-slate-900 md:p-6">
       <main className="mx-auto max-w-[1200px] space-y-5">
         {/* Hero */}
         <header className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 px-6 py-7 text-white shadow-sm md:px-8">
@@ -653,7 +653,7 @@ export default function PremiumReportPage() {
   return (
     <Suspense
       fallback={
-        <div className="-m-5 flex min-h-[80vh] items-center justify-center bg-slate-50 p-5">
+        <div className="flex min-h-[80vh] items-center justify-center bg-slate-50 p-5">
           <div className="flex items-center gap-3 text-sm font-medium text-slate-500">
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
             Loading...
