@@ -15,6 +15,23 @@ import {
 import { useSearchParams } from "next/navigation";
 
 import { useRouter } from "next/navigation";
+import {
+  BookOpen,
+  Mic,
+  Square,
+  Play,
+  RotateCcw,
+  Send,
+  Sparkles,
+  Timer,
+  Gauge,
+  Target,
+  Brain,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle2,
+  Rocket,
+} from "lucide-react";
 
 
 /* ---------------- AR 계산 ---------------- */
@@ -766,75 +783,92 @@ setFinalResult({
 
   /* ---------------- UI ---------------- */
 return (
-  <div>
+  <div className="min-h-screen w-full bg-slate-50 px-4 py-10 sm:py-14">
+    <div className="mx-auto w-full max-w-3xl">
 {phase === "ready" && (
-  <div>
-    <h2>레벨을 선택하세요</h2>
+  <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+    <div className="bg-gradient-to-br from-slate-900 to-slate-800 px-6 py-8 sm:px-10 sm:py-10">
+      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-indigo-300">
+        <BookOpen className="h-4 w-4" aria-hidden={true} />
+        Reading Assessment
+      </div>
+      <h2 className="mt-3 text-2xl font-semibold text-white sm:text-3xl text-balance">
+        레벨을 선택하세요
+      </h2>
+      <p className="mt-2 text-sm leading-relaxed text-slate-300">
+        아이의 현재 읽기 수준에 맞는 AR 레벨을 골라 테스트를 시작합니다.
+      </p>
+    </div>
 
-    <label>
-      <input
-        type="radio"
-        name="level"
-        value="1.0"
-        checked={selectedLevel === "1.0"}
-        onChange={(e) => {
-          setPassage(null);
-          setSelectedLevel(e.target.value);
+    <div className="px-6 py-8 sm:px-10">
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          { value: "1.0", label: "AR 1.0", desc: "입문 단계" },
+          { value: "2.0", label: "AR 2.0", desc: "기초 단계" },
+          { value: "3.0", label: "AR 3.0", desc: "발전 단계" },
+        ].map((opt) => {
+          const active = selectedLevel === opt.value;
+          return (
+            <label
+              key={opt.value}
+              className={`flex cursor-pointer flex-col rounded-2xl border p-4 transition-all ${
+                active
+                  ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-500/20"
+                  : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              <input
+                type="radio"
+                name="level"
+                value={opt.value}
+                checked={active}
+                onChange={(e) => {
+                  setPassage(null);
+                  setSelectedLevel(e.target.value);
+                }}
+                className="sr-only"
+              />
+              <span
+                className={`text-lg font-semibold ${
+                  active ? "text-indigo-700" : "text-slate-900"
+                }`}
+              >
+                {opt.label}
+              </span>
+              <span className="mt-1 text-sm text-slate-500">{opt.desc}</span>
+            </label>
+          );
+        })}
+      </div>
+
+      {/* 🔥 여기 추가 */}
+      {selectedLevel && !passage && (
+        <p className="mt-5 flex items-center gap-2 text-sm text-slate-500">
+          <Sparkles className="h-4 w-4 animate-pulse text-indigo-500" aria-hidden={true} />
+          지문 불러오는 중...
+        </p>
+      )}
+
+      <button
+        onClick={() => {
+          if (!selectedLevel) {
+            alert("레벨을 선택하세요");
+            return;
+          }
+
+          if (!passage) {
+            alert("지문을 불러오는 중입니다");
+            return;
+          }
+
+          setPhase("countdown");
         }}
-      />
-      AR 1.0
-    </label>
-
-    <label>
-      <input
-        type="radio"
-        name="level"
-        value="2.0"
-        checked={selectedLevel === "2.0"}
-        onChange={(e) => {
-          setPassage(null);
-          setSelectedLevel(e.target.value);
-        }}
-      />
-      AR 2.0
-    </label>
-
-    <label>
-      <input
-        type="radio"
-        name="level"
-        value="3.0"
-        checked={selectedLevel === "3.0"}
-        onChange={(e) => {
-          setPassage(null);
-          setSelectedLevel(e.target.value);
-        }}
-      />
-      AR 3.0
-    </label>
-
-    {/* 🔥 여기 추가 */}
-    {selectedLevel && !passage && <p>지문 불러오는 중...</p>}
-
-
-
-    <button
-      onClick={() => {
-        if (!selectedLevel) {
-          alert("레벨을 선택하세요");
-          return;
-        }
-
-        if (!passage) {
-          alert("지문을 불러오는 중입니다");
-          return;
-        }
-
-        setPhase("countdown");
-      }}
-    >
-      시작하기
-    </button>
+        className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-4 text-base font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
+      >
+        <Play className="h-5 w-5" aria-hidden={true} />
+        시작하기
+      </button>
+    </div>
   </div>
 )}
 
@@ -842,149 +876,222 @@ return (
 
     {/* COUNTDOWN */}
     {phase === "countdown" && (
-      <div>
-        <h3>읽을 준비를 하세요</h3>
-        <h1>{countdown}</h1>
-        <blockquote>{passage.content}</blockquote>
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col items-center bg-gradient-to-br from-slate-900 to-slate-800 px-6 py-12 text-center">
+          <p className="text-sm font-medium uppercase tracking-widest text-indigo-300">
+            읽을 준비를 하세요
+          </p>
+          <div className="mt-4 flex h-28 w-28 items-center justify-center rounded-full border-4 border-indigo-500/40 bg-slate-800/60">
+            <span className="text-5xl font-bold text-white tabular-nums">{countdown}</span>
+          </div>
+        </div>
+        <blockquote className="px-6 py-8 text-lg leading-relaxed text-slate-700 sm:px-10">
+          {passage.content}
+        </blockquote>
       </div>
     )}
 
     {/* READING */}
     {phase === "reading" && (
-      <div>
-        <h3>지문을 읽으세요. 🔴 녹음 중입니다</h3>
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-10">
+          <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+            <span className="flex h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" aria-hidden={true} />
+            지문을 읽으세요 · 녹음 중
+          </h3>
 
-        <button
-          onClick={() => {
-            if (mediaRecorderRef.current?.state === "recording") {
-              mediaRecorderRef.current.stop();
-            }
-          }}
-        >
-          ⏹️ 녹음 종료
-        </button>
+          <button
+            onClick={() => {
+              if (mediaRecorderRef.current?.state === "recording") {
+                mediaRecorderRef.current.stop();
+              }
+            }}
+            className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+          >
+            <Square className="h-4 w-4" aria-hidden={true} />
+            녹음 종료
+          </button>
+        </div>
 
-        <blockquote>{passage.content}</blockquote>
+        <blockquote className="px-6 py-8 text-xl leading-relaxed text-slate-800 sm:px-10">
+          {passage.content}
+        </blockquote>
       </div>
     )}
 
     {/* RECALL */}
     {phase === "recall" && (
-      <div>
-        <h3>방금 읽은 내용을 설명하세요</h3>
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="bg-gradient-to-br from-slate-900 to-slate-800 px-6 py-8 sm:px-10">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-indigo-300">
+            <Brain className="h-4 w-4" aria-hidden={true} />
+            Recall
+          </div>
+          <h3 className="mt-3 text-xl font-semibold text-white sm:text-2xl text-balance">
+            방금 읽은 내용을 설명하세요
+          </h3>
+        </div>
 
-        {recallPhase === "idle" && (
-          <button onClick={startRecallRecording}>설명 시작</button>
-        )}
+        <div className="flex flex-wrap gap-3 px-6 py-8 sm:px-10">
+          {recallPhase === "idle" && (
+            <button
+              onClick={startRecallRecording}
+              className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+            >
+              <Mic className="h-4 w-4" aria-hidden={true} />
+              설명 시작
+            </button>
+          )}
 
-        {recallPhase === "recording" && (
-          <button onClick={() => recallRecorderRef.current?.stop()}>
-            설명 마치기
-          </button>
-        )}
+          {recallPhase === "recording" && (
+            <button
+              onClick={() => recallRecorderRef.current?.stop()}
+              className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+            >
+              <Square className="h-4 w-4" aria-hidden={true} />
+              설명 마치기
+            </button>
+          )}
 
-        {recallPhase === "recorded" && (
-          <>
-            <button onClick={startRecallRecording}>다시 녹음</button>
-            <button onClick={() => submitRecall()}>제출하기</button>
-          </>
-        )}
+          {recallPhase === "recorded" && (
+            <>
+              <button
+                onClick={startRecallRecording}
+                className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                <RotateCcw className="h-4 w-4" aria-hidden={true} />
+                다시 녹음
+              </button>
+              <button
+                onClick={() => submitRecall()}
+                className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+              >
+                <Send className="h-4 w-4" aria-hidden={true} />
+                제출하기
+              </button>
+            </>
+          )}
 
-        {recallPhase === "submitting" && <p>📊 AI 분석 중...</p>}
+          {recallPhase === "submitting" && (
+            <p className="flex items-center gap-2 text-sm font-medium text-slate-600">
+              <Sparkles className="h-4 w-4 animate-pulse text-indigo-500" aria-hidden={true} />
+              AI 분석 중...
+            </p>
+          )}
+        </div>
       </div>
     )}
 
     {/* RESULT */}
 {phase === "result" && finalResult && (
-  
-<div>  
-  <div>
-    <h3>📌 발음 / 이해 피드백</h3>
-    
-      <ul>
 
+<div className="space-y-5">
+  <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+    <div className="border-b border-slate-100 px-6 py-6 sm:px-10">
+      <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900">
+        <Sparkles className="h-5 w-5 text-indigo-500" aria-hidden={true} />
+        발음 / 이해 피드백
+      </h3>
+
+      <div className="mt-3">
         {finalResult?.ai_comment ? (
-          <p>{finalResult.ai_comment}</p>
+          <p className="rounded-2xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">
+            {finalResult.ai_comment}
+          </p>
         ) : (
-          <p style={{ color: "#888" }}>분석 결과 없음</p>
+          <p className="text-sm text-slate-400">분석 결과 없음</p>
         )}
-      </ul>
+      </div>
+    </div>
+
+    <div className="space-y-6 px-6 py-6 sm:px-10">
         {finalResult?.wrong_words?.length > 0 && (
-          <>
-            <div>
-                <h3>📘 읽기에서 놓친 단어</h3>
-                <div>
-                {finalResult.wrong_words.map((w: string, i: number) => (
-                  <span key={i} style={{ marginRight: 8 }}>
-                    {w}
-                  </span>
-                ))}
-              </div>
-            
-            </div>
-          </>
-        )}
-
-
-        {finalResult?.badPronunciations?.length > 0 && (
-          <>
-            <h3>🔊 발음이 어려운 단어</h3>
-            <p>다음 단어는 발음 정확도가 낮았습니다.</p>
-
-            <div>
-              {finalResult.badPronunciations.slice(0, 5).map((w: string, i: number) => (
-                <span key={i} style={{ marginRight: 8, color: "red" }}>
+          <div>
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+              <BookOpen className="h-4 w-4 text-indigo-500" aria-hidden={true} />
+              읽기에서 놓친 단어
+            </h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {finalResult.wrong_words.map((w: string, i: number) => (
+                <span
+                  key={i}
+                  className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700"
+                >
                   {w}
                 </span>
               ))}
             </div>
-          </>
+          </div>
+        )}
+
+
+        {finalResult?.badPronunciations?.length > 0 && (
+          <div>
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+              <AlertCircle className="h-4 w-4 text-red-500" aria-hidden={true} />
+              발음이 어려운 단어
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">다음 단어는 발음 정확도가 낮았습니다.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {finalResult.badPronunciations.slice(0, 5).map((w: string, i: number) => (
+                <span
+                  key={i}
+                  className="rounded-full bg-red-50 px-3 py-1 text-sm font-medium text-red-600"
+                >
+                  {w}
+                </span>
+              ))}
+            </div>
+          </div>
         )}
 
         {finalResult?.wrong_words?.length === 0 &&
         finalResult?.badPronunciations?.length === 0 && (
-          <div style={{ marginTop: 20, color: "green" }}>
-            👍 읽기와 발음 모두 안정적입니다.
+          <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
+            <CheckCircle2 className="h-5 w-5" aria-hidden={true} />
+            읽기와 발음 모두 안정적입니다.
           </div>
         )}
 
 
       {finalResult && finalResult.levelUp === "AR3" && (
-        <div style={{ padding: 16, background: "#fff7e6", borderRadius: 8, marginBottom: 16 }}>
-          <p style={{ fontWeight: 600 }}>
-            🚀 매우 빠르고 정확하게 읽고 있습니다.
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <p className="flex items-center gap-2 font-semibold text-amber-900">
+            <Rocket className="h-5 w-5" aria-hidden={true} />
+            매우 빠르고 정확하게 읽고 있습니다.
           </p>
-          <p style={{ fontSize: 14 }}>
-            이 테스트는 기본 수준 확인용입니다.  
-            AR 3.0 단계 테스트를 진행해 보세요.
+          <p className="mt-1 text-sm leading-relaxed text-amber-800">
+            이 테스트는 기본 수준 확인용입니다. AR 3.0 단계 테스트를 진행해 보세요.
           </p>
 
-            <button
-              type="button"
-              onClick={() => {
-                setCurrentLevel("AR3");   // 🔥 추가
-                setFinalResult(null);
-                setCountdown(7);
-                setSelectedLevel("3.0");
-                setPhase("ready");
-              }}
-            >
+          <button
+            type="button"
+            onClick={() => {
+              setCurrentLevel("AR3");   // 🔥 추가
+              setFinalResult(null);
+              setCountdown(7);
+              setSelectedLevel("3.0");
+              setPhase("ready");
+            }}
+            className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
+          >
             AR 3.0 테스트 하기
           </button>
         </div>
       )}
-      
+
       {finalResult && finalResult.levelUp === "AR2" && (
-        <div style={{ padding: 16, background: "#e6f7ff", borderRadius: 8, marginBottom: 16 }}>
-          <p style={{ fontWeight: 600 }}>
-            📈 읽기 속도가 안정적으로 올라왔습니다.
+        <div className="rounded-2xl border border-sky-200 bg-sky-50 p-5">
+          <p className="flex items-center gap-2 font-semibold text-sky-900">
+            <TrendingUp className="h-5 w-5" aria-hidden={true} />
+            읽기 속도가 안정적으로 올라왔습니다.
           </p>
-          <p style={{ fontSize: 14 }}>
+          <p className="mt-1 text-sm leading-relaxed text-sky-800">
             AR 2.0 단계 테스트로 넘어가세요.
           </p>
 
-            <button
-              type="button"
+          <button
+            type="button"
             onClick={() => {
               setCurrentLevel("AR2");   // 🔥 추가
               setFinalResult(null);
@@ -992,109 +1099,174 @@ return (
               setSelectedLevel("2.0");
               setPhase("ready");
             }}
-            >
+            className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-sky-600"
+          >
             AR 2.0 테스트 하기
           </button>
         </div>
       )}
 
-    <h2>📊 리딩 진단 결과</h2>
+    <div className="border-t border-slate-100 pt-6">
+      <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+        <Gauge className="h-5 w-5 text-indigo-500" aria-hidden={true} />
+        리딩 진단 결과
+      </h2>
 
-    <h3>
-      AR{" "}
-        {!finalResult.levelUp && (
-          <p>📘 AR: {finalResult.final_ar.toFixed(1)}</p>
-        )}
-    </h3>
-
-    <p>읽기 속도: {finalResult?.wpm ? Math.round(finalResult.wpm) : "-"} WPM</p>
-    <p>읽기 정확도: {finalResult.accuracy ?? "-"}%</p>
-    <p>발음 정확도: {finalResult.pronunciationAccuracy ?? "-"}%</p>
-    <p>이해도: {Math.round(finalResult.comprehensionScore)}%</p>
-
-    <p>
-      {generateParentComment(
-        finalResult.wpm,
-        finalResult.accuracy,
-        finalResult.comprehensionScore
+      {!finalResult.levelUp && (
+        <div className="mt-4 flex items-center justify-between rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 px-6 py-5">
+          <span className="text-sm font-medium uppercase tracking-widest text-indigo-300">AR Level</span>
+          <span className="text-3xl font-bold text-white tabular-nums">
+            {finalResult.final_ar.toFixed(1)}
+          </span>
+        </div>
       )}
-    </p>
 
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-slate-200 p-4">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+            <Timer className="h-4 w-4" aria-hidden={true} />
+            읽기 속도
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-slate-900 tabular-nums">
+            {finalResult?.wpm ? Math.round(finalResult.wpm) : "-"}
+            <span className="ml-1 text-sm font-normal text-slate-400">WPM</span>
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 p-4">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+            <Target className="h-4 w-4" aria-hidden={true} />
+            읽기 정확도
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-slate-900 tabular-nums">
+            {finalResult.accuracy ?? "-"}<span className="ml-0.5 text-sm font-normal text-slate-400">%</span>
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 p-4">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+            <Mic className="h-4 w-4" aria-hidden={true} />
+            발음 정확도
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-slate-900 tabular-nums">
+            {finalResult.pronunciationAccuracy ?? "-"}<span className="ml-0.5 text-sm font-normal text-slate-400">%</span>
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 p-4">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+            <Brain className="h-4 w-4" aria-hidden={true} />
+            이해도
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-slate-900 tabular-nums">
+            {Math.round(finalResult.comprehensionScore)}<span className="ml-0.5 text-sm font-normal text-slate-400">%</span>
+          </p>
+        </div>
+      </div>
 
-
+      <p className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">
+        {generateParentComment(
+          finalResult.wpm,
+          finalResult.accuracy,
+          finalResult.comprehensionScore
+        )}
+      </p>
+    </div>
+    </div>
   </div>
 
 
 
 
-<div style={{ marginTop: 30, padding: 20, background: "#f5f5f5" }}>
-  <p><b>👉 10초 피드백</b></p>
+<div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+  <div className="border-b border-slate-100 px-6 py-5 sm:px-10">
+    <p className="text-base font-semibold text-slate-900">10초 피드백</p>
+    <p className="mt-1 text-sm text-slate-500">더 나은 서비스를 위해 의견을 들려주세요.</p>
+  </div>
 
-  <p>1. 결과 이해되셨나요?</p>
-  <select onChange={(e) => setFeedback({...feedback, understood: e.target.value})}>
-    <option value="">선택</option>
-    <option>매우 그렇다</option>
-    <option>보통</option>
-    <option>아니다</option>
-  </select>
+  <div className="space-y-5 px-6 py-6 sm:px-10">
+    <div>
+      <label className="text-sm font-medium text-slate-700">1. 결과 이해되셨나요?</label>
+      <select
+        onChange={(e) => setFeedback({...feedback, understood: e.target.value})}
+        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+      >
+        <option value="">선택</option>
+        <option>매우 그렇다</option>
+        <option>보통</option>
+        <option>아니다</option>
+      </select>
+    </div>
 
-  <p>2. 도움이 되었나요?</p>
-  <select onChange={(e) => setFeedback({...feedback, helpful: e.target.value})}>
-    <option value="">선택</option>
-    <option>매우 그렇다</option>
-    <option>보통</option>
-    <option>아니다</option>
-  </select>
+    <div>
+      <label className="text-sm font-medium text-slate-700">2. 도움이 되었나요?</label>
+      <select
+        onChange={(e) => setFeedback({...feedback, helpful: e.target.value})}
+        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+      >
+        <option value="">선택</option>
+        <option>매우 그렇다</option>
+        <option>보통</option>
+        <option>아니다</option>
+      </select>
+    </div>
 
-  <p>3. 유료라면 사용할 의향 있으신가요?</p>
-  <select onChange={(e) => setFeedback({...feedback, paid: e.target.value})}>
-    <option value="">선택</option>
-    <option>있다</option>
-    <option>고민</option>
-    <option>없다</option>
-  </select>
+    <div>
+      <label className="text-sm font-medium text-slate-700">3. 유료라면 사용할 의향 있으신가요?</label>
+      <select
+        onChange={(e) => setFeedback({...feedback, paid: e.target.value})}
+        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+      >
+        <option value="">선택</option>
+        <option>있다</option>
+        <option>고민</option>
+        <option>없다</option>
+      </select>
+    </div>
 
-  <p>👉 가장 궁금한 점 1가지만 적어주세요</p>
-  <textarea
-    style={{ width: "100%", height: 80 }}
-    onChange={(e) => setFeedback({...feedback, comment: e.target.value})}
-  />
+    <div>
+      <label className="text-sm font-medium text-slate-700">가장 궁금한 점 1가지만 적어주세요</label>
+      <textarea
+        onChange={(e) => setFeedback({...feedback, comment: e.target.value})}
+        className="mt-2 h-24 w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+      />
+    </div>
 
-  <button
-    style={{ marginTop: 10 }}
-    onClick={async () => {
-      console.log("피드백:", feedback);
+    <button
+      onClick={async () => {
+        console.log("피드백:", feedback);
 
-      const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
 
-      if (!user) {
-        alert("로그인이 필요합니다");
-        return;
-      }
+        if (!user) {
+          alert("로그인이 필요합니다");
+          return;
+        }
 
-      const { error } = await supabase.from("feedbacks").insert({
-        user_id: user.id,
-        result_id: resultId,   // ⚠️ 이거 중요
-        understood: feedback.understood,
-        helpful: feedback.helpful,
-        paid: feedback.paid,
-        comment: feedback.comment,
-      });
+        const { error } = await supabase.from("feedbacks").insert({
+          user_id: user.id,
+          result_id: resultId,   // ⚠️ 이거 중요
+          understood: feedback.understood,
+          helpful: feedback.helpful,
+          paid: feedback.paid,
+          comment: feedback.comment,
+        });
 
-      if (error) {
-        console.error(error);
-        alert("저장 실패");
-        return;
-      }
+        if (error) {
+          console.error(error);
+          alert("저장 실패");
+          return;
+        }
 
-      alert("감사합니다!");
-    }}
-  >
-    제출
-  </button>
+        alert("감사합니다!");
+      }}
+      className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+    >
+      <Send className="h-4 w-4" aria-hidden={true} />
+      제출
+    </button>
+  </div>
   </div>
  </div>
       )}
-</div>
+    </div>
+  </div>
   );
 }
