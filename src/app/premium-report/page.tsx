@@ -315,59 +315,63 @@ function ClientPart() {
   const samples = getWordSamples(result);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 font-sans text-slate-900 md:p-6">
-      <main className="mx-auto max-w-[1200px] space-y-5">
+    <div className="min-h-screen bg-slate-50 p-4 font-sans text-slate-900 md:p-8">
+      <main className="mx-auto max-w-[1400px] space-y-6">
         {/* Hero */}
-        <header className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 px-6 py-7 text-white shadow-sm md:px-8">
+        <header className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-900 px-6 py-10 text-white shadow-xl shadow-slate-900/10 ring-1 ring-white/10 md:px-12 md:py-14">
           <div
-            className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-indigo-500/20 blur-3xl"
+            className="pointer-events-none absolute -right-20 -top-24 h-80 w-80 rounded-full bg-indigo-500/25 blur-3xl"
             aria-hidden={true}
           />
-          <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div
+            className="pointer-events-none absolute -bottom-32 -left-16 h-72 w-72 rounded-full bg-indigo-600/15 blur-3xl"
+            aria-hidden={true}
+          />
+          <div className="relative flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white/90 ring-1 ring-inset ring-white/15">
-                <Sparkles className="h-3.5 w-3.5" aria-hidden={true} />
-                Premium
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-white/90 ring-1 ring-inset ring-white/15 backdrop-blur">
+                <Sparkles className="h-3.5 w-3.5 text-indigo-300" aria-hidden={true} />
+                Premium AI Assessment
               </span>
-              <h1 className="mt-3 text-balance text-2xl font-bold tracking-tight md:text-3xl">
-                AI Premium Reading Dashboard
+              <h1 className="mt-4 text-balance text-3xl font-bold tracking-tight md:text-4xl">
+                AI Premium Reading Report
               </h1>
-              <p className="mt-1.5 max-w-lg text-pretty text-sm leading-relaxed text-slate-300">
+              <p className="mt-3 max-w-xl text-pretty text-sm leading-relaxed text-slate-300 md:text-base">
                 AI analyzed your child&apos;s reading performance and built a personalized roadmap.
               </p>
             </div>
 
             {coach && (
-              <div className="flex shrink-0 items-center gap-3 rounded-2xl bg-white/5 px-4 py-3 ring-1 ring-inset ring-white/10">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10">
-                  <MapPin className="h-5 w-5 text-white" aria-hidden={true} />
+              <div className="flex shrink-0 items-center gap-3.5 rounded-2xl bg-white/5 px-5 py-4 ring-1 ring-inset ring-white/10 backdrop-blur">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-lg shadow-indigo-900/40">
+                  <MapPin className="h-6 w-6 text-white" aria-hidden={true} />
                 </div>
                 <div>
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                  <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
                     Current Reading Stage
                   </p>
-                  <p className="text-lg font-semibold text-white">{coach.stage}</p>
+                  <p className="text-xl font-bold text-white">{coach.stage}</p>
                 </div>
               </div>
             )}
           </div>
 
-          {/* At-a-glance summary strip */}
-          <div className="relative mt-6 grid grid-cols-2 gap-3 border-t border-white/10 pt-5 md:grid-cols-4">
+          {/* At-a-glance metrics strip */}
+          <div className="relative mt-10 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-white/10 ring-1 ring-inset ring-white/10 md:grid-cols-4">
             {[
               { label: "AR Level", value: (result.final_ar ?? 0).toFixed(1), unit: "" },
               { label: "Reading Speed", value: Math.round(result.wpm ?? 0), unit: "WPM" },
               { label: "Accuracy", value: Math.round(result.accuracy ?? 0), unit: "%" },
               { label: "Comprehension", value: Math.round(result.comprehension ?? 0), unit: "%" },
             ].map((stat) => (
-              <div key={stat.label}>
-                <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+              <div key={stat.label} className="bg-slate-900/40 px-5 py-5 backdrop-blur">
+                <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
                   {stat.label}
                 </p>
-                <p className="mt-1 flex items-baseline gap-1 text-2xl font-bold tabular-nums text-white">
+                <p className="mt-2 flex items-baseline gap-1.5 text-3xl font-bold tabular-nums text-white md:text-4xl">
                   {stat.value}
                   {stat.unit && (
-                    <span className="text-xs font-medium text-slate-400">{stat.unit}</span>
+                    <span className="text-sm font-medium text-indigo-300">{stat.unit}</span>
                   )}
                 </p>
               </div>
@@ -376,15 +380,17 @@ function ClientPart() {
         </header>
 
         {/* Dashboard row: 2x2 metrics + diagnosis/goal */}
-        <section className="grid gap-5 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <div className="mb-3 flex items-center gap-2">
-              <Activity className="h-4 w-4 text-indigo-600" aria-hidden={true} />
+        <section className="grid gap-6 lg:grid-cols-5">
+          <div className="lg:col-span-3">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+                <Activity className="h-4 w-4" aria-hidden={true} />
+              </span>
               <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
                 Performance Metrics
               </h2>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-5">
               <PremiumScoreCard title="AR Level" value={result.final_ar ?? 0} max={5} unit="" variant="ar" />
               <PremiumScoreCard title="Reading Speed" value={Math.round(result.wpm ?? 0)} max={180} unit="WPM" />
               <PremiumScoreCard title="Accuracy" value={Math.round(result.accuracy ?? 0)} max={100} unit="%" />
@@ -393,20 +399,24 @@ function ClientPart() {
           </div>
 
           {coach && (
-            <div className="flex flex-col gap-4">
-              <div className="flex-1 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center gap-2 text-slate-500">
-                  <Stethoscope className="h-4 w-4" aria-hidden={true} />
-                  <span className="text-xs font-semibold uppercase tracking-wider">Core Diagnosis</span>
+            <div className="flex flex-col gap-5 lg:col-span-2">
+              <div className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+                <div className="flex items-center gap-2.5 border-b border-slate-100 bg-slate-50/80 px-5 py-3.5">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
+                    <Stethoscope className="h-4 w-4" aria-hidden={true} />
+                  </span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">Core Diagnosis</span>
                 </div>
-                <p className="mt-3 text-sm leading-relaxed text-slate-700">{coach.diagnosis}</p>
+                <p className="px-5 py-5 text-sm leading-relaxed text-slate-700">{coach.diagnosis}</p>
               </div>
-              <div className="flex-1 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-5 shadow-sm">
-                <div className="flex items-center gap-2 text-indigo-600">
-                  <Target className="h-4 w-4" aria-hidden={true} />
-                  <span className="text-xs font-semibold uppercase tracking-wider">Reading Goal</span>
+              <div className="flex-1 overflow-hidden rounded-2xl border border-indigo-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+                <div className="flex items-center gap-2.5 border-b border-indigo-100 bg-indigo-50 px-5 py-3.5">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
+                    <Target className="h-4 w-4" aria-hidden={true} />
+                  </span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-indigo-700">Reading Goal</span>
                 </div>
-                <p className="mt-3 text-sm font-medium leading-relaxed text-indigo-900">{coach.goal}</p>
+                <p className="px-5 py-5 text-sm font-medium leading-relaxed text-indigo-900">{coach.goal}</p>
               </div>
             </div>
           )}
@@ -414,51 +424,57 @@ function ClientPart() {
 
         {/* Roadmap timeline + Parent action */}
         {coach && (
-          <section className="grid gap-5 lg:grid-cols-2">
+          <section className="grid gap-6 lg:grid-cols-2">
             {/* 4-Week roadmap timeline */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-              <div className="flex items-center gap-2 text-slate-500">
-                <CalendarDays className="h-4 w-4" aria-hidden={true} />
-                <span className="text-xs font-semibold uppercase tracking-wider">4-Week Reading Roadmap</span>
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-7">
+              <div className="mb-6 flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-white">
+                  <CalendarDays className="h-4 w-4" aria-hidden={true} />
+                </span>
+                <span className="text-sm font-semibold uppercase tracking-wider text-slate-600">4-Week Reading Roadmap</span>
               </div>
-              <ol className="mt-5 space-y-3.5">
+              <ol className="space-y-0">
                 {coach.roadmap.map((item, index) => (
-                  <li key={index} className="flex items-start gap-3.5">
-                    <div className="relative flex flex-col items-center self-stretch">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
+                  <li key={index} className="flex items-stretch gap-4">
+                    <div className="relative flex flex-col items-center">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-indigo-700 text-sm font-bold text-white shadow-md shadow-indigo-600/25">
                         {index + 1}
                       </span>
                       {index < coach.roadmap.length - 1 && (
-                        <span className="mt-1 w-px flex-1 bg-slate-200" aria-hidden={true} />
+                        <span className="my-1 w-0.5 flex-1 bg-gradient-to-b from-indigo-200 to-slate-200" aria-hidden={true} />
                       )}
                     </div>
-                    <div className="flex-1 pb-0.5">
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                        Week {index + 1}
-                      </p>
-                      <p className="mt-0.5 text-sm leading-relaxed text-slate-700">{item}</p>
+                    <div className={`flex-1 ${index < coach.roadmap.length - 1 ? "pb-5" : ""}`}>
+                      <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3.5">
+                        <p className="text-[11px] font-semibold uppercase tracking-widest text-indigo-500">
+                          Week {index + 1}
+                        </p>
+                        <p className="mt-1 text-sm leading-relaxed text-slate-700">{item}</p>
+                      </div>
                     </div>
                   </li>
                 ))}
               </ol>
             </div>
 
-            {/* Parent action — green checklist cards */}
-            <div>
-              <div className="mb-3 flex items-center gap-2 text-emerald-700">
-                <Users className="h-4 w-4" aria-hidden={true} />
-                <span className="text-xs font-semibold uppercase tracking-wider">Parent Action</span>
+            {/* Parent action — green success cards */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-7">
+              <div className="mb-6 flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white">
+                  <Users className="h-4 w-4" aria-hidden={true} />
+                </span>
+                <span className="text-sm font-semibold uppercase tracking-wider text-slate-600">Parent Action</span>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 {coach.parentAction.map((item, index) => (
                   <div
                     key={index}
-                    className="flex items-start gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 shadow-sm"
+                    className="flex items-start gap-3.5 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md md:p-5"
                   >
-                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
-                      <Check className="h-3.5 w-3.5" aria-hidden={true} />
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm">
+                      <Check className="h-4 w-4" aria-hidden={true} />
                     </span>
-                    <span className="text-sm leading-relaxed text-emerald-900">{item}</span>
+                    <span className="text-sm font-medium leading-relaxed text-emerald-900">{item}</span>
                   </div>
                 ))}
               </div>
@@ -466,21 +482,26 @@ function ClientPart() {
           </section>
         )}
 
-        {/* Weak words — colored chips */}
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-500" aria-hidden={true} />
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">대표 오류 단어</h2>
+        {/* Weak words — colored chips by severity */}
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-7">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+              <AlertTriangle className="h-4 w-4" aria-hidden={true} />
+            </span>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-600">대표 오류 단어</h2>
           </div>
-          <div className="mt-4 grid gap-5 md:grid-cols-2">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">발음 오류</p>
-              <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-6 grid gap-6 md:grid-cols-2">
+            <div className="rounded-2xl border border-rose-100 bg-rose-50/50 p-5">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-rose-500" aria-hidden={true} />
+                <p className="text-xs font-semibold uppercase tracking-wider text-rose-700">발음 오류</p>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
                 {samples.pronunciation.length > 0 ? (
                   samples.pronunciation.map((word: string, i: number) => (
                     <span
                       key={i}
-                      className="rounded-lg bg-rose-50 px-3 py-1.5 text-sm font-medium text-rose-700 ring-1 ring-inset ring-rose-100"
+                      className="rounded-xl bg-white px-3.5 py-2 text-sm font-semibold text-rose-700 shadow-sm ring-1 ring-inset ring-rose-200"
                     >
                       {word}
                     </span>
@@ -490,14 +511,17 @@ function ClientPart() {
                 )}
               </div>
             </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">읽기 오류</p>
-              <div className="mt-2 flex flex-wrap gap-2">
+            <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-5">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden={true} />
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-700">읽기 오류</p>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
                 {samples.missing.length > 0 ? (
                   samples.missing.map((word: string, i: number) => (
                     <span
                       key={i}
-                      className="rounded-lg bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 ring-1 ring-inset ring-amber-100"
+                      className="rounded-xl bg-white px-3.5 py-2 text-sm font-semibold text-amber-700 shadow-sm ring-1 ring-inset ring-amber-200"
                     >
                       {word}
                     </span>
@@ -511,55 +535,72 @@ function ClientPart() {
         </section>
 
         {/* Recommended books — premium cards */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <BookOpen className="h-4 w-4 text-indigo-600" aria-hidden={true} />
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">추천 도서</h2>
+        <section className="space-y-5">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+              <BookOpen className="h-4 w-4" aria-hidden={true} />
+            </span>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-600">추천 도서</h2>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {rec.short.map((b, i) => (
               <article
                 key={i}
-                className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+                className="flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
               >
-                <div className="flex items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                    <BookOpen className="h-5 w-5" aria-hidden={true} />
-                  </span>
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-indigo-500">
-                      추천 {i + 1}
-                    </p>
-                    <h3 className="text-base font-semibold text-slate-900">{b.title}</h3>
+                <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-5">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                      <BookOpen className="h-5 w-5" aria-hidden={true} />
+                    </span>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-widest text-indigo-500">
+                        추천 {i + 1}
+                      </p>
+                      <h3 className="mt-0.5 text-base font-bold leading-snug text-slate-900">{b.title}</h3>
+                    </div>
                   </div>
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                    <FileText className="h-3.5 w-3.5" aria-hidden={true} />
-                    {b.word_count.toLocaleString()} words
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                    <Clock className="h-3.5 w-3.5" aria-hidden={true} />
-                    예상 {getReadingTime(b, result)}분
+                  <span className="shrink-0 rounded-full bg-indigo-600 px-2.5 py-1 text-[11px] font-bold text-white">
+                    AR {b.ar_min}–{b.ar_max}
                   </span>
                 </div>
 
-                <div className="mt-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">추천 이유</p>
-                  <ul className="mt-2 space-y-2">
-                    {getRecommendationReason(b, result).map((reason, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm leading-relaxed text-slate-600">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" aria-hidden={true} />
-                        {reason}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <div className="flex flex-1 flex-col p-5">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl bg-slate-50 px-3 py-2.5">
+                      <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                        <Clock className="h-3.5 w-3.5" aria-hidden={true} />
+                        예상 시간
+                      </p>
+                      <p className="mt-1 text-sm font-bold text-slate-900">{getReadingTime(b, result)}분</p>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 px-3 py-2.5">
+                      <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                        <FileText className="h-3.5 w-3.5" aria-hidden={true} />
+                        분량
+                      </p>
+                      <p className="mt-1 text-sm font-bold text-slate-900">{b.word_count.toLocaleString()}</p>
+                    </div>
+                  </div>
 
-                <div className="mt-4 rounded-xl bg-indigo-50/70 px-4 py-3 text-sm font-semibold text-indigo-700">
-                  {getReadingPlan(b, result)}
+                  <p className="mt-4 flex-1 text-sm leading-relaxed text-slate-600">
+                    {getRecommendationReason(b, result)[0]}
+                  </p>
+
+                  <div className="mt-4 rounded-xl bg-indigo-50/70 px-4 py-2.5 text-xs font-semibold text-indigo-700">
+                    {getReadingPlan(b, result)}
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      window.open("https://open.kakao.com/o/gIcwAHli");
+                    }}
+                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+                  >
+                    이 책으로 시작하기
+                    <ArrowRight className="h-4 w-4" aria-hidden={true} />
+                  </button>
                 </div>
               </article>
             ))}
@@ -567,56 +608,73 @@ function ClientPart() {
 
           {rec.long.length > 0 && (
             <>
-              <div className="flex items-center gap-2 pt-1">
-                <Rocket className="h-4 w-4 text-amber-500" aria-hidden={true} />
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
+              <div className="flex items-center gap-2.5 pt-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+                  <Rocket className="h-4 w-4" aria-hidden={true} />
+                </span>
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-600">
                   도전 읽기 (긴 책)
                 </h3>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                 {rec.long.map((b, i) => (
                   <article
                     key={i}
-                    className="flex flex-col rounded-2xl border border-amber-200 bg-amber-50/40 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+                    className="flex flex-col overflow-hidden rounded-3xl border border-amber-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
                   >
-                    <div className="flex items-start gap-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
-                        <Rocket className="h-5 w-5" aria-hidden={true} />
-                      </span>
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-600">
-                          도전 {i + 1}
-                        </p>
-                        <h3 className="text-base font-semibold text-slate-900">{b.title}</h3>
+                    <div className="flex items-start justify-between gap-3 border-b border-amber-100 bg-amber-50/50 p-5">
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+                          <Rocket className="h-5 w-5" aria-hidden={true} />
+                        </span>
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-widest text-amber-600">
+                            도전 {i + 1}
+                          </p>
+                          <h3 className="mt-0.5 text-base font-bold leading-snug text-slate-900">{b.title}</h3>
+                        </div>
                       </div>
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/70 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-100">
-                        <FileText className="h-3.5 w-3.5" aria-hidden={true} />
-                        {b.word_count.toLocaleString()} words
-                      </span>
-                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/70 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-100">
-                        <Clock className="h-3.5 w-3.5" aria-hidden={true} />
-                        예상 {getReadingTime(b, result)}분
+                      <span className="shrink-0 rounded-full bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-white">
+                        AR {b.ar_min}–{b.ar_max}
                       </span>
                     </div>
 
-                    <div className="mt-4">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-amber-600/80">도전 이유</p>
-                      <ul className="mt-2 space-y-2">
-                        {getRecommendationReason(b, result).map((reason, idx) => (
-                          <li key={idx} className="flex items-start gap-2 text-sm leading-relaxed text-slate-600">
-                            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" aria-hidden={true} />
-                            {reason}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    <div className="flex flex-1 flex-col p-5">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-xl bg-amber-50/70 px-3 py-2.5">
+                          <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-amber-600/80">
+                            <Clock className="h-3.5 w-3.5" aria-hidden={true} />
+                            예상 시간
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-slate-900">{getReadingTime(b, result)}분</p>
+                        </div>
+                        <div className="rounded-xl bg-amber-50/70 px-3 py-2.5">
+                          <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-amber-600/80">
+                            <FileText className="h-3.5 w-3.5" aria-hidden={true} />
+                            분량
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-slate-900">{b.word_count.toLocaleString()}</p>
+                        </div>
+                      </div>
 
-                    <div className="mt-4 rounded-xl bg-amber-100/70 px-4 py-3 text-sm font-semibold text-amber-800">
-                      {getReadingPlan(b, result)}
+                      <p className="mt-4 flex-1 text-sm leading-relaxed text-slate-600">
+                        {getRecommendationReason(b, result)[0]}
+                      </p>
+
+                      <div className="mt-4 rounded-xl bg-amber-100/70 px-4 py-2.5 text-xs font-semibold text-amber-800">
+                        {getReadingPlan(b, result)}
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          window.open("https://open.kakao.com/o/gIcwAHli");
+                        }}
+                        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
+                      >
+                        도전 시작하기
+                        <ArrowRight className="h-4 w-4" aria-hidden={true} />
+                      </button>
                     </div>
                   </article>
                 ))}
@@ -626,23 +684,37 @@ function ClientPart() {
         </section>
 
         {/* CTA */}
-        <section className="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 px-6 py-8 text-center text-white shadow-sm md:px-10">
-          <h2 className="text-balance text-xl font-bold tracking-tight md:text-2xl">
-            더 자세한 분석이 필요하신가요?
-          </h2>
-          <p className="mx-auto mt-2 max-w-md text-pretty text-sm leading-relaxed text-slate-300">
-            더 자세한 분석을 확인하려면 상담이 필요합니다.
-          </p>
-          <button
-            onClick={() => {
-              window.open("https://open.kakao.com/o/gIcwAHli");
-            }}
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100"
-          >
-            <MessageCircle className="h-4 w-4" aria-hidden={true} />
-            1:1 상담 신청하기
-            <ArrowRight className="h-4 w-4" aria-hidden={true} />
-          </button>
+        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-900 px-6 py-12 text-center text-white shadow-xl shadow-slate-900/10 ring-1 ring-white/10 md:px-10 md:py-16">
+          <div
+            className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-indigo-500/25 blur-3xl"
+            aria-hidden={true}
+          />
+          <div
+            className="pointer-events-none absolute -bottom-20 -left-16 h-64 w-64 rounded-full bg-indigo-600/15 blur-3xl"
+            aria-hidden={true}
+          />
+          <div className="relative mx-auto max-w-xl">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-white/90 ring-1 ring-inset ring-white/15 backdrop-blur">
+              <Sparkles className="h-3.5 w-3.5 text-indigo-300" aria-hidden={true} />
+              1:1 Consultation
+            </span>
+            <h2 className="mt-4 text-balance text-2xl font-bold tracking-tight md:text-3xl">
+              더 자세한 분석이 필요하신가요?
+            </h2>
+            <p className="mx-auto mt-3 max-w-md text-pretty text-sm leading-relaxed text-slate-300 md:text-base">
+              더 자세한 분석을 확인하려면 상담이 필요합니다.
+            </p>
+            <button
+              onClick={() => {
+                window.open("https://open.kakao.com/o/gIcwAHli");
+              }}
+              className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-8 py-3.5 text-sm font-bold text-slate-900 shadow-lg shadow-slate-900/20 transition-all hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-xl"
+            >
+              <MessageCircle className="h-4 w-4" aria-hidden={true} />
+              1:1 상담 신청하기
+              <ArrowRight className="h-4 w-4" aria-hidden={true} />
+            </button>
+          </div>
         </section>
       </main>
     </div>
