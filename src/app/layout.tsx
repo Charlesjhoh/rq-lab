@@ -1,5 +1,6 @@
 "use client";
 
+import "./globals.css";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import { useEffect, useState } from "react";
@@ -11,16 +12,13 @@ export default function RootLayout({
 }) {
   const router = useRouter();
 
-    const handleLogout = async () => {
-      await supabase.auth.signOut();
+  const [userId, setUserId] = useState<string | null>(null);
 
-      setUserId(null);
-const result = await supabase.auth.getSession()
-console.log(result.data.session)
-      router.replace("/login");
-    };
-  
-const [userId, setUserId] = useState<string | null>(null);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUserId(null);
+    router.replace("/login");
+  };
 
 useEffect(() => {
   const getSession = async () => {
