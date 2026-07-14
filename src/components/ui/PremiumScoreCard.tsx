@@ -68,7 +68,7 @@ export default function PremiumScoreCard({
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "space-between",
-        minHeight: "260px",
+        minHeight: "280px",
         textAlign: "center",
         boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.04)",
       }}
@@ -80,13 +80,13 @@ export default function PremiumScoreCard({
 
       {/* 게이지 구역 (동적 색상 gaugeColor 전달) */}
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", width: "100%", flexGrow: 1 }}>
-        <CircularGauge value={percentage} size={120} strokeWidth={14} color={gaugeColor}>
+        <CircularGauge value={percentage} size={144} strokeWidth={16} color={gaugeColor}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: "22px", fontWeight: "900", color: "#0F172A", lineHeight: 1 }}>
+            <span style={{ fontSize: "30px", fontWeight: "900", color: "#0F172A", lineHeight: 1 }}>
               <CountUp end={value} decimals={variant === "ar" ? 1 : 0} duration={1.2} />
             </span>
             {unit && (
-              <span style={{ fontSize: "10px", fontWeight: "bold", color: "#94A3B8", marginTop: "4px" }}>
+              <span style={{ fontSize: "11px", fontWeight: "bold", color: "#94A3B8", marginTop: "5px" }}>
                 {unit}
               </span>
             )}
@@ -95,8 +95,8 @@ export default function PremiumScoreCard({
       </div>
 
       {/* 하단 뱃지 가이드 */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", width: "100%", marginTop: "10px" }}>
-        <div className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${badgeStyle}`}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", width: "100%", marginTop: "12px" }}>
+        <div className={`rounded-full px-3 py-1 text-[11px] font-bold ${badgeStyle}`}>
           {badge}
         </div>
         <div style={{ fontSize: "10px", color: "#94A3B8" }}>

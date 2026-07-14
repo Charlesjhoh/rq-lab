@@ -24,6 +24,14 @@ import {
   ArrowRight,
   Check,
   Activity,
+  Brain,
+  TrendingUp,
+  Repeat,
+  Volume2,
+  Flag,
+  BarChart3,
+  CalendarClock,
+  UserCheck,
 } from "lucide-react";
 
 function getFinalDiagnosis(data: any) {
@@ -313,10 +321,11 @@ function ClientPart() {
   });
 
   const samples = getWordSamples(result);
+  const summary = getPremiumSummary(result);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 font-sans text-slate-900 md:p-8">
-      <main className="mx-auto max-w-[1400px] space-y-6">
+    <div className="min-h-screen bg-slate-50 p-4 font-sans text-slate-900 md:p-6">
+      <main className="mx-auto max-w-7xl space-y-5">
         {/* Hero */}
         <header className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-900 px-6 py-10 text-white shadow-xl shadow-slate-900/10 ring-1 ring-white/10 md:px-12 md:py-14">
           <div
@@ -356,22 +365,23 @@ function ClientPart() {
             )}
           </div>
 
-          {/* At-a-glance metrics strip */}
-          <div className="relative mt-10 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-white/10 ring-1 ring-inset ring-white/10 md:grid-cols-4">
+          {/* Premium KPI row — Stripe Analytics style */}
+          <div className="relative mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-white/10 ring-1 ring-inset ring-white/10 md:grid-cols-4">
             {[
-              { label: "AR Level", value: (result.final_ar ?? 0).toFixed(1), unit: "" },
-              { label: "Reading Speed", value: Math.round(result.wpm ?? 0), unit: "WPM" },
-              { label: "Accuracy", value: Math.round(result.accuracy ?? 0), unit: "%" },
-              { label: "Comprehension", value: Math.round(result.comprehension ?? 0), unit: "%" },
+              { label: "AR Level", value: (result.final_ar ?? 0).toFixed(1), unit: "", icon: BookOpen },
+              { label: "Reading Speed", value: Math.round(result.wpm ?? 0), unit: "WPM", icon: Activity },
+              { label: "Accuracy", value: Math.round(result.accuracy ?? 0), unit: "%", icon: Target },
+              { label: "Comprehension", value: Math.round(result.comprehension ?? 0), unit: "%", icon: Brain },
             ].map((stat) => (
-              <div key={stat.label} className="bg-slate-900/40 px-5 py-5 backdrop-blur">
-                <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
-                  {stat.label}
-                </p>
-                <p className="mt-2 flex items-baseline gap-1.5 text-3xl font-bold tabular-nums text-white md:text-4xl">
+              <div key={stat.label} className="bg-slate-900/50 px-5 py-5 backdrop-blur transition-colors hover:bg-slate-900/70">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <stat.icon className="h-3.5 w-3.5" aria-hidden={true} />
+                  <p className="text-[11px] font-medium uppercase tracking-widest">{stat.label}</p>
+                </div>
+                <p className="mt-3 flex items-baseline gap-1.5 text-4xl font-bold tabular-nums leading-none text-white md:text-[2.75rem]">
                   {stat.value}
                   {stat.unit && (
-                    <span className="text-sm font-medium text-indigo-300">{stat.unit}</span>
+                    <span className="text-sm font-semibold text-indigo-300">{stat.unit}</span>
                   )}
                 </p>
               </div>
@@ -379,47 +389,85 @@ function ClientPart() {
           </div>
         </header>
 
-        {/* Dashboard row: 2x2 metrics + diagnosis/goal */}
-        <section className="grid gap-6 lg:grid-cols-5">
-          <div className="lg:col-span-3">
-            <div className="mb-4 flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
-                <Activity className="h-4 w-4" aria-hidden={true} />
-              </span>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-                Performance Metrics
-              </h2>
-            </div>
-            <div className="grid grid-cols-2 gap-5">
+        {/* Performance Dashboard */}
+        <section>
+          <div className="mb-4 flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+              <BarChart3 className="h-4 w-4" aria-hidden={true} />
+            </span>
+            <h2 className="text-base font-bold tracking-tight text-slate-900">Performance Dashboard</h2>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+            {/* Gauges 2x2 */}
+            <div className="grid grid-cols-2 gap-4 xl:col-span-2">
               <PremiumScoreCard title="AR Level" value={result.final_ar ?? 0} max={5} unit="" variant="ar" />
               <PremiumScoreCard title="Reading Speed" value={Math.round(result.wpm ?? 0)} max={180} unit="WPM" />
               <PremiumScoreCard title="Accuracy" value={Math.round(result.accuracy ?? 0)} max={100} unit="%" />
               <PremiumScoreCard title="Comprehension" value={Math.round(result.comprehension ?? 0)} max={100} unit="%" />
             </div>
-          </div>
 
-          {coach && (
-            <div className="flex flex-col gap-5 lg:col-span-2">
-              <div className="flex-1 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-                <div className="flex items-center gap-2.5 border-b border-slate-100 bg-slate-50/80 px-5 py-3.5">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
-                    <Stethoscope className="h-4 w-4" aria-hidden={true} />
-                  </span>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">Core Diagnosis</span>
+            {/* Insight rail: Core Diagnosis + Reading Goal */}
+            {coach && (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-1">
+                {/* Core Diagnosis — AI insight card */}
+                <div className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-5 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+                        <Stethoscope className="h-4 w-4" aria-hidden={true} />
+                      </span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Core Diagnosis</span>
+                    </div>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-600 ring-1 ring-inset ring-indigo-100">
+                      <Sparkles className="h-3 w-3" aria-hidden={true} />
+                      AI
+                    </span>
+                  </div>
+                  <div className="flex flex-1 flex-col gap-3.5 px-5 py-4">
+                    <div>
+                      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600">
+                        <span className="h-1.5 w-1.5 rounded-full bg-rose-500" aria-hidden={true} />
+                        문제 요약
+                      </p>
+                      <p className="mt-1 text-sm font-medium leading-relaxed text-slate-800">{coach.diagnosis}</p>
+                    </div>
+                    <div>
+                      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-indigo-600">
+                        <Brain className="h-3.5 w-3.5" aria-hidden={true} />
+                        AI Analysis
+                      </p>
+                      <p className="mt-1 text-sm leading-relaxed text-slate-600">{summary.cause}</p>
+                    </div>
+                    <div className="mt-auto rounded-xl bg-emerald-50/70 px-3.5 py-3 ring-1 ring-inset ring-emerald-100">
+                      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
+                        <TrendingUp className="h-3.5 w-3.5" aria-hidden={true} />
+                        Expected Improvement
+                      </p>
+                      <p className="mt-1 text-sm font-medium leading-relaxed text-emerald-900">{summary.solution}</p>
+                    </div>
+                  </div>
                 </div>
-                <p className="px-5 py-5 text-sm leading-relaxed text-slate-700">{coach.diagnosis}</p>
-              </div>
-              <div className="flex-1 overflow-hidden rounded-2xl border border-indigo-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-                <div className="flex items-center gap-2.5 border-b border-indigo-100 bg-indigo-50 px-5 py-3.5">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
-                    <Target className="h-4 w-4" aria-hidden={true} />
-                  </span>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-indigo-700">Reading Goal</span>
+
+                {/* Reading Goal */}
+                <div className="flex flex-col overflow-hidden rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-600 to-indigo-700 text-white shadow-sm">
+                  <div className="flex items-center gap-2.5 border-b border-white/15 px-5 py-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
+                      <Flag className="h-4 w-4" aria-hidden={true} />
+                    </span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-white/90">Reading Goal</span>
+                  </div>
+                  <div className="flex flex-1 flex-col justify-center px-5 py-4">
+                    <p className="text-base font-semibold leading-relaxed text-balance">{coach.goal}</p>
+                    <div className="mt-3 flex items-center gap-2 border-t border-white/15 pt-3 text-xs text-indigo-100">
+                      <Target className="h-3.5 w-3.5" aria-hidden={true} />
+                      <span>Target Stage: <span className="font-bold text-white">{coach.stage}</span></span>
+                    </div>
+                  </div>
                 </div>
-                <p className="px-5 py-5 text-sm font-medium leading-relaxed text-indigo-900">{coach.goal}</p>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </section>
 
         {/* Roadmap timeline + Parent action */}
@@ -482,49 +530,63 @@ function ClientPart() {
           </section>
         )}
 
-        {/* Weak words — colored chips by severity */}
+        {/* Weak words — compact practice cards */}
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-7">
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
               <AlertTriangle className="h-4 w-4" aria-hidden={true} />
             </span>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-600">대표 오류 단어</h2>
+            <h2 className="text-base font-bold tracking-tight text-slate-900">대표 오류 단어</h2>
           </div>
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
-            <div className="rounded-2xl border border-rose-100 bg-rose-50/50 p-5">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-rose-500" aria-hidden={true} />
-                <p className="text-xs font-semibold uppercase tracking-wider text-rose-700">발음 오류</p>
+          <div className="mt-5 grid gap-6 md:grid-cols-2">
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <Volume2 className="h-4 w-4 text-rose-500" aria-hidden={true} />
+                <p className="text-xs font-bold uppercase tracking-wider text-rose-700">발음 오류</p>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                 {samples.pronunciation.length > 0 ? (
                   samples.pronunciation.map((word: string, i: number) => (
-                    <span
+                    <div
                       key={i}
-                      className="rounded-xl bg-white px-3.5 py-2 text-sm font-semibold text-rose-700 shadow-sm ring-1 ring-inset ring-rose-200"
+                      className="flex items-center gap-2.5 rounded-xl border border-rose-100 bg-rose-50/50 py-2 pl-3 pr-2.5"
                     >
-                      {word}
-                    </span>
+                      <div className="text-left">
+                        <p className="text-sm font-bold leading-tight text-slate-900">{word}</p>
+                        <p className="text-[10px] font-medium leading-tight text-rose-600">발음 교정 필요</p>
+                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-md bg-white px-1.5 py-1 text-[10px] font-bold text-rose-600 ring-1 ring-inset ring-rose-200">
+                        <Repeat className="h-3 w-3" aria-hidden={true} />
+                        연습
+                      </span>
+                    </div>
                   ))
                 ) : (
                   <span className="text-sm text-slate-400">없음</span>
                 )}
               </div>
             </div>
-            <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-5">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden={true} />
-                <p className="text-xs font-semibold uppercase tracking-wider text-amber-700">읽기 오류</p>
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-amber-500" aria-hidden={true} />
+                <p className="text-xs font-bold uppercase tracking-wider text-amber-700">읽기 오류</p>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                 {samples.missing.length > 0 ? (
                   samples.missing.map((word: string, i: number) => (
-                    <span
+                    <div
                       key={i}
-                      className="rounded-xl bg-white px-3.5 py-2 text-sm font-semibold text-amber-700 shadow-sm ring-1 ring-inset ring-amber-200"
+                      className="flex items-center gap-2.5 rounded-xl border border-amber-100 bg-amber-50/50 py-2 pl-3 pr-2.5"
                     >
-                      {word}
-                    </span>
+                      <div className="text-left">
+                        <p className="text-sm font-bold leading-tight text-slate-900">{word}</p>
+                        <p className="text-[10px] font-medium leading-tight text-amber-600">정확도 향상 필요</p>
+                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-md bg-white px-1.5 py-1 text-[10px] font-bold text-amber-600 ring-1 ring-inset ring-amber-200">
+                        <Repeat className="h-3 w-3" aria-hidden={true} />
+                        연습
+                      </span>
+                    </div>
                   ))
                 ) : (
                   <span className="text-sm text-slate-400">없음</span>
@@ -534,76 +596,74 @@ function ClientPart() {
           </div>
         </section>
 
-        {/* Recommended books — premium cards */}
+        {/* Recommended books — premium product cards */}
         <section className="space-y-5">
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
               <BookOpen className="h-4 w-4" aria-hidden={true} />
             </span>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-600">추천 도서</h2>
+            <h2 className="text-base font-bold tracking-tight text-slate-900">추천 도서</h2>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {rec.short.map((b, i) => (
-              <article
-                key={i}
-                className="flex flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-              >
-                <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-5">
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-                      <BookOpen className="h-5 w-5" aria-hidden={true} />
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {rec.short.map((b, i) => {
+              const minutes = getReadingTime(b, result);
+              const difficulty = minutes <= 20 ? "쉬움" : minutes <= 40 ? "보통" : "도전";
+              return (
+                <article
+                  key={i}
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                >
+                  {/* Cover placeholder */}
+                  <div className="relative flex aspect-[16/9] items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-500 via-indigo-600 to-slate-900">
+                    <BookOpen className="h-10 w-10 text-white/30 transition-transform duration-300 group-hover:scale-110" aria-hidden={true} />
+                    <span className="absolute left-3 top-3 rounded-lg bg-white/15 px-2 py-1 text-[11px] font-bold text-white backdrop-blur ring-1 ring-inset ring-white/20">
+                      AR {b.ar_min}–{b.ar_max}
                     </span>
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-widest text-indigo-500">
-                        추천 {i + 1}
-                      </p>
-                      <h3 className="mt-0.5 text-base font-bold leading-snug text-slate-900">{b.title}</h3>
-                    </div>
+                    <span className="absolute right-3 top-3 rounded-lg bg-white px-2 py-1 text-[11px] font-bold text-indigo-700 shadow-sm">
+                      {difficulty}
+                    </span>
+                    <span className="absolute bottom-3 left-3 text-[11px] font-semibold uppercase tracking-widest text-white/80">
+                      추천 {i + 1}
+                    </span>
                   </div>
-                  <span className="shrink-0 rounded-full bg-indigo-600 px-2.5 py-1 text-[11px] font-bold text-white">
-                    AR {b.ar_min}–{b.ar_max}
-                  </span>
-                </div>
 
-                <div className="flex flex-1 flex-col p-5">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl bg-slate-50 px-3 py-2.5">
-                      <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                  <div className="flex flex-1 flex-col p-4">
+                    <h3 className="text-base font-bold leading-snug text-slate-900">{b.title}</h3>
+
+                    <div className="mt-2.5 flex items-center gap-3 text-xs font-medium text-slate-500">
+                      <span className="inline-flex items-center gap-1">
                         <Clock className="h-3.5 w-3.5" aria-hidden={true} />
-                        예상 시간
-                      </p>
-                      <p className="mt-1 text-sm font-bold text-slate-900">{getReadingTime(b, result)}분</p>
-                    </div>
-                    <div className="rounded-xl bg-slate-50 px-3 py-2.5">
-                      <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                        {minutes}분
+                      </span>
+                      <span className="h-3 w-px bg-slate-200" aria-hidden={true} />
+                      <span className="inline-flex items-center gap-1">
                         <FileText className="h-3.5 w-3.5" aria-hidden={true} />
-                        분량
-                      </p>
-                      <p className="mt-1 text-sm font-bold text-slate-900">{b.word_count.toLocaleString()}</p>
+                        {b.word_count.toLocaleString()} words
+                      </span>
                     </div>
+
+                    <p className="mt-3 flex-1 text-sm leading-relaxed text-slate-600">
+                      {getRecommendationReason(b, result)[0]}
+                    </p>
+
+                    <div className="mt-3 rounded-lg bg-indigo-50/70 px-3 py-2 text-xs font-semibold text-indigo-700">
+                      {getReadingPlan(b, result)}
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        window.open("https://open.kakao.com/o/gIcwAHli");
+                      }}
+                      className="mt-3.5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+                    >
+                      이 책으로 시작하기
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden={true} />
+                    </button>
                   </div>
-
-                  <p className="mt-4 flex-1 text-sm leading-relaxed text-slate-600">
-                    {getRecommendationReason(b, result)[0]}
-                  </p>
-
-                  <div className="mt-4 rounded-xl bg-indigo-50/70 px-4 py-2.5 text-xs font-semibold text-indigo-700">
-                    {getReadingPlan(b, result)}
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      window.open("https://open.kakao.com/o/gIcwAHli");
-                    }}
-                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
-                  >
-                    이 책으로 시작하기
-                    <ArrowRight className="h-4 w-4" aria-hidden={true} />
-                  </button>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
 
           {rec.long.length > 0 && (
@@ -612,72 +672,69 @@ function ClientPart() {
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
                   <Rocket className="h-4 w-4" aria-hidden={true} />
                 </span>
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-600">
+                <h3 className="text-base font-bold tracking-tight text-slate-900">
                   도전 읽기 (긴 책)
                 </h3>
               </div>
 
-              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {rec.long.map((b, i) => (
-                  <article
-                    key={i}
-                    className="flex flex-col overflow-hidden rounded-3xl border border-amber-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-                  >
-                    <div className="flex items-start justify-between gap-3 border-b border-amber-100 bg-amber-50/50 p-5">
-                      <div className="flex items-start gap-3">
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
-                          <Rocket className="h-5 w-5" aria-hidden={true} />
+              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {rec.long.map((b, i) => {
+                  const minutes = getReadingTime(b, result);
+                  return (
+                    <article
+                      key={i}
+                      className="group flex flex-col overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+                    >
+                      {/* Cover placeholder */}
+                      <div className="relative flex aspect-[16/9] items-center justify-center overflow-hidden bg-gradient-to-br from-amber-400 via-amber-500 to-orange-700">
+                        <Rocket className="h-10 w-10 text-white/30 transition-transform duration-300 group-hover:scale-110" aria-hidden={true} />
+                        <span className="absolute left-3 top-3 rounded-lg bg-white/15 px-2 py-1 text-[11px] font-bold text-white backdrop-blur ring-1 ring-inset ring-white/20">
+                          AR {b.ar_min}–{b.ar_max}
                         </span>
-                        <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-widest text-amber-600">
-                            도전 {i + 1}
-                          </p>
-                          <h3 className="mt-0.5 text-base font-bold leading-snug text-slate-900">{b.title}</h3>
-                        </div>
+                        <span className="absolute right-3 top-3 rounded-lg bg-white px-2 py-1 text-[11px] font-bold text-amber-700 shadow-sm">
+                          도전
+                        </span>
+                        <span className="absolute bottom-3 left-3 text-[11px] font-semibold uppercase tracking-widest text-white/80">
+                          도전 {i + 1}
+                        </span>
                       </div>
-                      <span className="shrink-0 rounded-full bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-white">
-                        AR {b.ar_min}–{b.ar_max}
-                      </span>
-                    </div>
 
-                    <div className="flex flex-1 flex-col p-5">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="rounded-xl bg-amber-50/70 px-3 py-2.5">
-                          <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-amber-600/80">
+                      <div className="flex flex-1 flex-col p-4">
+                        <h3 className="text-base font-bold leading-snug text-slate-900">{b.title}</h3>
+
+                        <div className="mt-2.5 flex items-center gap-3 text-xs font-medium text-slate-500">
+                          <span className="inline-flex items-center gap-1">
                             <Clock className="h-3.5 w-3.5" aria-hidden={true} />
-                            예상 시간
-                          </p>
-                          <p className="mt-1 text-sm font-bold text-slate-900">{getReadingTime(b, result)}분</p>
-                        </div>
-                        <div className="rounded-xl bg-amber-50/70 px-3 py-2.5">
-                          <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-amber-600/80">
+                            {minutes}분
+                          </span>
+                          <span className="h-3 w-px bg-slate-200" aria-hidden={true} />
+                          <span className="inline-flex items-center gap-1">
                             <FileText className="h-3.5 w-3.5" aria-hidden={true} />
-                            분량
-                          </p>
-                          <p className="mt-1 text-sm font-bold text-slate-900">{b.word_count.toLocaleString()}</p>
+                            {b.word_count.toLocaleString()} words
+                          </span>
                         </div>
+
+                        <p className="mt-3 flex-1 text-sm leading-relaxed text-slate-600">
+                          {getRecommendationReason(b, result)[0]}
+                        </p>
+
+                        <div className="mt-3 rounded-lg bg-amber-100/70 px-3 py-2 text-xs font-semibold text-amber-800">
+                          {getReadingPlan(b, result)}
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            window.open("https://open.kakao.com/o/gIcwAHli");
+                          }}
+                          className="mt-3.5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
+                        >
+                          도전 시작하기
+                          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden={true} />
+                        </button>
                       </div>
-
-                      <p className="mt-4 flex-1 text-sm leading-relaxed text-slate-600">
-                        {getRecommendationReason(b, result)[0]}
-                      </p>
-
-                      <div className="mt-4 rounded-xl bg-amber-100/70 px-4 py-2.5 text-xs font-semibold text-amber-800">
-                        {getReadingPlan(b, result)}
-                      </div>
-
-                      <button
-                        onClick={() => {
-                          window.open("https://open.kakao.com/o/gIcwAHli");
-                        }}
-                        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
-                      >
-                        도전 시작하기
-                        <ArrowRight className="h-4 w-4" aria-hidden={true} />
-                      </button>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             </>
           )}
@@ -693,17 +750,37 @@ function ClientPart() {
             className="pointer-events-none absolute -bottom-20 -left-16 h-64 w-64 rounded-full bg-indigo-600/15 blur-3xl"
             aria-hidden={true}
           />
-          <div className="relative mx-auto max-w-xl">
+          <div className="relative mx-auto max-w-3xl text-center">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-widest text-white/90 ring-1 ring-inset ring-white/15 backdrop-blur">
               <Sparkles className="h-3.5 w-3.5 text-indigo-300" aria-hidden={true} />
-              1:1 Consultation
+              Premium Coaching
             </span>
             <h2 className="mt-4 text-balance text-2xl font-bold tracking-tight md:text-3xl">
-              더 자세한 분석이 필요하신가요?
+              더 깊이 있는 AI 코칭이 필요하신가요?
             </h2>
             <p className="mx-auto mt-3 max-w-md text-pretty text-sm leading-relaxed text-slate-300 md:text-base">
-              더 자세한 분석을 확인하려면 상담이 필요합니다.
+              1:1 상담을 통해 아이만을 위한 맞춤 독서 코칭을 시작하세요.
             </p>
+
+            <div className="mx-auto mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">
+              {[
+                { icon: BarChart3, title: "Weekly Report", desc: "매주 성장 리포트" },
+                { icon: CalendarClock, title: "Personal Reading Plan", desc: "맞춤 독서 플랜" },
+                { icon: UserCheck, title: "Parent Coaching", desc: "학부모 코칭 제공" },
+              ].map((benefit) => (
+                <div
+                  key={benefit.title}
+                  className="flex flex-col items-center gap-2 rounded-2xl bg-white/5 px-4 py-5 ring-1 ring-inset ring-white/10 backdrop-blur"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-lg shadow-indigo-900/40">
+                    <benefit.icon className="h-5 w-5 text-white" aria-hidden={true} />
+                  </span>
+                  <p className="text-sm font-bold text-white">{benefit.title}</p>
+                  <p className="text-xs text-slate-400">{benefit.desc}</p>
+                </div>
+              ))}
+            </div>
+
             <button
               onClick={() => {
                 window.open("https://open.kakao.com/o/gIcwAHli");
