@@ -351,6 +351,28 @@ function ClientPart() {
               </div>
             )}
           </div>
+
+          {/* At-a-glance summary strip */}
+          <div className="relative mt-6 grid grid-cols-2 gap-3 border-t border-white/10 pt-5 md:grid-cols-4">
+            {[
+              { label: "AR Level", value: (result.final_ar ?? 0).toFixed(1), unit: "" },
+              { label: "Reading Speed", value: Math.round(result.wpm ?? 0), unit: "WPM" },
+              { label: "Accuracy", value: Math.round(result.accuracy ?? 0), unit: "%" },
+              { label: "Comprehension", value: Math.round(result.comprehension ?? 0), unit: "%" },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                  {stat.label}
+                </p>
+                <p className="mt-1 flex items-baseline gap-1 text-2xl font-bold tabular-nums text-white">
+                  {stat.value}
+                  {stat.unit && (
+                    <span className="text-xs font-medium text-slate-400">{stat.unit}</span>
+                  )}
+                </p>
+              </div>
+            ))}
+          </div>
         </header>
 
         {/* Dashboard row: 2x2 metrics + diagnosis/goal */}
