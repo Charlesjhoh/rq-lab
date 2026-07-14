@@ -134,13 +134,13 @@ useEffect(() => {
 
       const latestMap = Object.fromEntries(
         allResults.map((u: any) => {
-          const latest = u.reading_results?.[0];
-          return [u.student_id, latest];
+          const latest = u.reading_results?.[0] ?? null;
+          return [u.id, latest];
         })
       );
       const sortedUsers = [...filteredUsers].sort((a, b) => {
-        const A = latestMap[a.student_id];
-        const B = latestMap[b.student_id];
+        const A = latestMap[a.id];
+        const B = latestMap[b.id];
 
         const score = (x: any) => {
           if (!x) return 0;
@@ -234,7 +234,7 @@ useEffect(() => {
                   <p className="px-5 py-6 text-sm text-slate-400">검색 결과 없음</p>
                 ) : (
                   sortedUsers.map((u) => {
-                    const latest = latestMap[u.student_id];
+                    const latest = latestMap[u.id];
                     const meta = getStatusMeta(latest);
                     const active = selectedStudentId === u.student_id;
                     return (
