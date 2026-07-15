@@ -424,27 +424,46 @@ function ClientPart() {
                       AI
                     </span>
                   </div>
-                  <div className="flex flex-1 flex-col gap-3.5 px-5 py-4">
-                    <div>
-                      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-rose-600">
-                        <span className="h-1.5 w-1.5 rounded-full bg-rose-500" aria-hidden={true} />
-                        문제 요약
-                      </p>
-                      <p className="mt-1 text-sm font-medium leading-relaxed text-slate-800">{coach.diagnosis}</p>
+                  <div className="flex flex-1 flex-col px-5 py-4">
+                    {/* Step 1 — 문제 */}
+                    <div className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-rose-100 text-[11px] font-bold text-rose-600 ring-1 ring-inset ring-rose-200">
+                          1
+                        </span>
+                        <span className="my-1 w-px flex-1 bg-slate-200" aria-hidden={true} />
+                      </div>
+                      <div className="pb-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-600">문제 요약</p>
+                        <p className="mt-1 text-sm font-medium leading-relaxed text-slate-800">{summary.problem}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-indigo-600">
-                        <Brain className="h-3.5 w-3.5" aria-hidden={true} />
-                        AI Analysis
-                      </p>
-                      <p className="mt-1 text-sm leading-relaxed text-slate-600">{summary.cause}</p>
+                    {/* Step 2 — 원인 */}
+                    <div className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 ring-1 ring-inset ring-indigo-200">
+                          <Brain className="h-3.5 w-3.5" aria-hidden={true} />
+                        </span>
+                        <span className="my-1 w-px flex-1 bg-slate-200" aria-hidden={true} />
+                      </div>
+                      <div className="pb-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-indigo-600">원인 분석</p>
+                        <p className="mt-1 text-sm leading-relaxed text-slate-600">{summary.cause}</p>
+                      </div>
                     </div>
-                    <div className="mt-auto rounded-xl bg-emerald-50/70 px-3.5 py-3 ring-1 ring-inset ring-emerald-100">
-                      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
-                        <TrendingUp className="h-3.5 w-3.5" aria-hidden={true} />
-                        Expected Improvement
-                      </p>
-                      <p className="mt-1 text-sm font-medium leading-relaxed text-emerald-900">{summary.solution}</p>
+                    {/* Step 3 — 해결 */}
+                    <div className="flex flex-1 gap-3">
+                      <div className="flex flex-col items-center">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 ring-1 ring-inset ring-emerald-200">
+                          <TrendingUp className="h-3.5 w-3.5" aria-hidden={true} />
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">해결 방향</p>
+                        <div className="mt-1.5 rounded-xl bg-emerald-50/70 px-3.5 py-3 ring-1 ring-inset ring-emerald-100">
+                          <p className="text-sm font-medium leading-relaxed text-emerald-900">{summary.solution}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
