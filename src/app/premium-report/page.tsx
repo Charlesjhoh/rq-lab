@@ -257,7 +257,7 @@ function generateDynamicRoadmap(ar: number, wpm: number, accuracy: number, reade
     {
       week: "Week 2",
       title: "Nuanced Vocabulary Bridge",
-      desc: "단순 직역이 아닌 문학 소설 속 다의어의 미세한 문맥적 뉘앙스와 캐릭터의 심리 톤앤매너 추론 독서"
+      desc: "단순 직역이 아닌 문학 소설 속 다의어의 미세한 문맥적 뉘앙스와 캐릭터의 ��리 톤앤매너 추론 독서"
     },
     {
       week: "Week 3",
