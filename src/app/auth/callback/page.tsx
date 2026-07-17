@@ -10,14 +10,11 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleAuth = async () => {
       try {
-        console.log("CALLBACK PAGE 진입");
-        console.log("현재 URL:", window.location.href);
 
         const { error } = await supabase.auth.exchangeCodeForSession(
           window.location.href
         );
 
-        console.log("exchange 결과:", error);
 
         if (error) {
           console.error("세션 생성 실패:", error);
@@ -27,11 +24,9 @@ export default function AuthCallbackPage() {
 
         const { data } = await supabase.auth.getSession();
 
-        console.log("session:", data);
 
         const user = data.session?.user;
 
-        console.log("user:", user);
 
         if (!user) {
           console.log("user 없음");
@@ -45,17 +40,13 @@ export default function AuthCallbackPage() {
           .eq("id", user.id)
           .maybeSingle();
 
-        console.log("profile:", profile);
 
         if (profile) {
-          console.log("reading-test 이동");
           router.replace(`/reading-test?profile_id=${profile.id}`);
         } else {
-          console.log("onboarding 이동");
-          router.replace("/onboarding");
+           router.replace("/onboarding");
         }
       } catch (err) {
-        console.error("Auth callback 오류:", err);
         router.replace("/login");
       }
     };

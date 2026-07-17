@@ -75,7 +75,6 @@ function getBaseAR(wpm: number) {
     return 1.8 + ((wpm - 60) / 20) * (2.0 - 1.8);
   }
 
-  // 🔥 여기부터 기존 로직 연결
   if (wpm <= 120) {
     return 2.0 + ((wpm - 80) / 40) * 1.0; // → 3.0
   }
@@ -192,7 +191,6 @@ if (!profileId) {
   const recallChunksRef = useRef<Blob[]>([]);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [lastPassageId, setLastPassageId] = useState<number | null>(null);
-  //const [profileId, setProfileId] = useState<string | null>(null);
 
   useEffect(() => {
   const loadProfile = async () => {
@@ -238,26 +236,20 @@ useEffect(() => {
       const { data } = await supabase
         .from("passages")
         .select("*")
-       // .limit(10)
         .gte("ar_max", level)
         .lte("ar_min", level);
-
-
 
         if (data && data.length > 0) {
           let candidates = data;
 
-          // 👉 이전 지문 제외
           if (lastPassageId) {
             candidates = data.filter((p) => p.id !== lastPassageId);
           }
 
-          // 👉 후보가 없으면 (1개뿐일 때)
           if (candidates.length === 0) {
             candidates = data;
           }
 
-          // 👉 랜덤 선택
           const random =
             candidates[Math.floor(Math.random() * candidates.length)];
 
@@ -295,9 +287,7 @@ useEffect(() => {
     };
 
 recorder.onstop = () => {
-  const chunks = audioChunksRef.current; // ✅ 이걸로 바꿔
-
-  console.log("🔥 reading chunks:", chunks.length);
+  const chunks = audioChunksRef.current;
 
   if (chunks.length === 0) {
     alert("읽기 녹음 실패");
@@ -306,18 +296,16 @@ recorder.onstop = () => {
 
   const blob = new Blob(chunks, { type: "audio/webm" });
 
-  console.log("🔥 reading blob:", blob.size);
-
-  setAudioBlob(blob); // ✅ 중요
+  setAudioBlob(blob);
 
   stream.getTracks().forEach((t) => t.stop());
 
-  setPhase("recall"); // ✅ 다음 단계로 이동
+  setPhase("recall");
 };
     recorder.start(100);
 
  
-    setStartTime(Date.now()); // ✅ 추가
+    setStartTime(Date.now());
     mediaRecorderRef.current = recorder;
 
 
@@ -344,16 +332,12 @@ recorder.onstop = () => {
   recorder.onstop = () => {
     const chunks = recallChunksRef.current;
 
-    console.log("🧠 recall chunks:", chunks.length);
-
     if (chunks.length === 0) {
       alert("설명 녹음 실패");
       return;
     }
 
     const blob = new Blob(chunks, { type: "audio/webm" });
-
-    console.log("🧠 recall blob:", blob.size);
 
     setRecallBlob(blob);
 
@@ -482,13 +466,9 @@ function getBookGroups(ar: number) {
 
 const spokenWordCount = Math.min(spokenWordsArr.length, originalWords.length);
 
-  // 🔥 핵심 계산들
   const spokenText = pronunData.recognizedText || "";
 
   const spokenWords = spokenText.trim().split(/\s+/);
-
-
-
 
 
 const aiRes = await fetch("/api/ai-comment", {
@@ -502,7 +482,6 @@ const aiRes = await fetch("/api/ai-comment", {
 });
 
 const aiData = await aiRes.json();
-//const aiComment = aiData.comment || "";
 
 
 const originalWordCount = refText.trim().split(/\s+/).length;
@@ -511,10 +490,6 @@ const wpm = (spokenWordCount / durationSec) * 60;
 let compData;
 
 
-
-// 3️⃣ fetch (여기서 처음 등장)
-// 2️⃣ FormData 생성
-// 1️⃣ PCM 변환
 let recallPCM;
 try {
   recallPCM = await blobToPCM16kMono(recallBlobParam);
@@ -544,16 +519,13 @@ if (!compRes.ok) {
   return;
 }
 
-// 4️⃣ text 받기
 const text = await compRes.text();
 
-// 5️⃣ JSON 파싱
 try {
   compData = JSON.parse(text);
 } catch (e) {
   console.error("❌ JSON parse 실패", text);
 
-  // 👉 fallback 넣어
   compData = {
     score: 0,
     summary: "분석 결과를 불러오지 못했습니다.",
@@ -563,16 +535,13 @@ try {
 }
 let comprehensionScore = compData.score || 0;
 
-// 6️⃣ score 추출
 if (compData.score === undefined) {
   alert("이해도 분석 실패");
   return;
 }
 
 
-// 7️⃣ AR 계산
 const baseAR = getBaseAR(wpm);
-console.log("spokenWordCount:", spokenWordCount, "baseAR:", baseAR, "accuracy:", accuracy, "comprehensionScore:", comprehensionScore);
 
 let finalAR =
   baseAR -
@@ -581,14 +550,12 @@ let finalAR =
 finalAR = Math.max(0.5, Math.min(5.0, finalAR));
 
 
-// 🔥 레벨별 기준
 let minCoverage = 0.3;
 
 if (finalAR < 2) minCoverage = 0.2;
 else if (finalAR < 3) minCoverage = 0.3;
 else minCoverage = 0.4;
 
-// 🔥 기존 조건 삭제하고 이걸로 교체
 if (readingCoverage < minCoverage) {
   alert("읽기가 충분하지 않아 결과를 계산할 수 없습니다.");
   setPhase("ready");
@@ -596,16 +563,10 @@ if (readingCoverage < minCoverage) {
 }
 
 
-
-
   if (!durationSec || durationSec === 0) {
       alert("녹음 시간이 너무 짧습니다");
       return;
   }
-
-
-
-  
 
 
 if (
@@ -618,21 +579,15 @@ if (
 }
 
 
-
-
-
-
 setDiagnosis([compData.comment || ""]);
 
-const compGood: string[] = []; // 아직 없음
-const compBad: string[] = [];  // 아직 없음
+const compGood: string[] = []; 
+const compBad: string[] = [];  
 const compSummary = compData.comment || "";
-// 🔴 recall 텍스트
 const recallText = compData.recallText || "";
 const baseScore = compData.score || 0;
 
 
-// 🔴 길이 기반 보정
 const recallWordCount = recallText.trim().split(/\s+/).length;
 
 let finalScore = baseScore;
@@ -643,12 +598,10 @@ if (recallWordCount < 5) {
   finalScore = baseScore * 0.5;
 }
 
-// 🔥 NaN 먼저 처리
 if (isNaN(finalScore)) {
   finalScore = 0;
 }
 
-// 🔥 마지막에 한 번만 정리
 comprehensionScore = Math.round(finalScore);
 
 
@@ -656,7 +609,6 @@ const safe = (v: number) => (isNaN(v) ? 0 : v);
 
 const safeWpm = safe(wpm);
 const safeAccuracy = safe(accuracy);
-
 
 
 const recommendedBooks = getRecommendedBooks(finalAR);
@@ -682,10 +634,6 @@ function generateFlags({
   return flags;
 }
 
-console.log("🔥 저장 데이터:", {
-  ai_score: compData.score,
-  ai_comment: compData.summary
-});
 const aiScore = compData.score ?? 0;
 const aiComment = compData.summary ?? "분석 결과 없음";
 
@@ -695,8 +643,6 @@ const { data: profile, error } = await supabase
   .eq("id", user.id)
   .maybeSingle();
 
-  console.log("🔥 profile:", profile);
-console.log("🔥 profile.student_id:", profile?.student_id);
 if (error) {
   console.error(error);
   return;
@@ -717,7 +663,7 @@ await supabase.from("reading_results").insert([
   {
     user_id: user.id,
     profile_id: profileId,
-     student_id: profile?.student_id, // ✅ 추가
+     student_id: profile?.student_id, 
     wpm: safeWpm,
     accuracy: safeAccuracy,
     comprehension: comprehensionScore,
@@ -763,18 +709,18 @@ setRecallPhase("idle");
 
 setFinalResult({
   baseAR,
-  final_ar: finalAR,          // 🔥 이름 맞춰서
+  final_ar: finalAR,          
   wpm: safeWpm,
   accuracy: pronunData.accuracy, 
-  pronunciationAccuracy: pronunData.pronunciationAccuracy, // (선택)
+  pronunciationAccuracy: pronunData.pronunciationAccuracy, 
   comprehensionScore,
   durationSec,
   spokenWordCount,
   originalWordCount,
   readingCoverage,
-  ai_comment: compData.summary,      // 🔥 여기 넣는다
-  wrong_words: pronunData.wrongWords,   // 🔥 이거 추가
-  badPronunciations: pronunData.badPronunciations, // 🔥 이거 추가
+  ai_comment: compData.summary,      
+  wrong_words: pronunData.wrongWords,   
+  badPronunciations: pronunData.badPronunciations, 
   levelUp, 
 });
 
@@ -841,7 +787,6 @@ return (
         })}
       </div>
 
-      {/* 🔥 여기 추가 */}
       {selectedLevel && !passage && (
         <p className="mt-5 flex items-center gap-2 text-sm text-slate-500">
           <Sparkles className="h-4 w-4 animate-pulse text-indigo-500" aria-hidden={true} />
@@ -1067,7 +1012,7 @@ return (
           <button
             type="button"
             onClick={() => {
-              setCurrentLevel("AR3");   // 🔥 추가
+              setCurrentLevel("AR3");   
               setFinalResult(null);
               setCountdown(7);
               setSelectedLevel("3.0");
@@ -1093,7 +1038,7 @@ return (
           <button
             type="button"
             onClick={() => {
-              setCurrentLevel("AR2");   // 🔥 추가
+              setCurrentLevel("AR2");   
               setFinalResult(null);
               setCountdown(7);
               setSelectedLevel("2.0");
@@ -1231,8 +1176,6 @@ return (
 
     <button
       onClick={async () => {
-        console.log("피드백:", feedback);
-
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
@@ -1242,7 +1185,7 @@ return (
 
         const { error } = await supabase.from("feedbacks").insert({
           user_id: user.id,
-          result_id: resultId,   // ⚠️ 이거 중요
+          result_id: resultId,   
           understood: feedback.understood,
           helpful: feedback.helpful,
           paid: feedback.paid,

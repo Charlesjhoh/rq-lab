@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
 import {
@@ -22,16 +22,7 @@ import {
   User,
 } from "lucide-react";
 
-export default function TeacherPage() {
-  const [users, setUsers] = useState<any[]>([]);
-  const [results, setResults] = useState<any[]>([]);
-
-
-
-  const [search, setSearch] = useState("");
-  const router = useRouter();
-
-  // ✅ 1. 전체 학생 목록 (profiles 기준)
+// 타입 선언
 type Student = {
   id: string;
   student_id: string;
@@ -39,47 +30,111 @@ type Student = {
   parent_name: string;
   birth: string;
   email: string;
+  role: string;
 };
-
-const [students, setStudents] = useState<Student[]>([]);
-
-const [keyword, setKeyword] = useState("");
-const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
 type ReadingResult = {
   id: string;
   wpm: number;
   accuracy: number;
   comprehension: number;
+  final_ar?: number;
+  created_at: string;
+  reference_text?: string;
+  recognized_text?: string;
+  recall_text?: string;
+  ai_comment?: string;
+  duration_sec?: number;
+  spoken_words?: number;
+  total_words?: number;
+  coverage?: number;
+  flags?: string[];
 };
 
 type StudentWithResults = {
   id: string;
+  student_id: string;
   student_name: string;
   reading_results: ReadingResult[];
 };
 
-const [allResults, setAllResults] = useState<StudentWithResults[]>([]);
-useEffect(() => {
-  const load = async () => {
-    const { data } = await supabase
+export default function TeacherPage() {
+  const router = useRouter();
+
+  // 상태 관리
+  const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [allResults, setAllResults] = useState<StudentWithResults[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [results, setResults] = useState<ReadingResult[]>([]);
+  const [keyword, setKeyword] = useState("");
+
+  // 정적 페이지 프리렌더링 시 레이아웃 붕괴 및 경고를 원천 차단하기 위한 마운트 가드
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // 🔐 profiles 테이블의 role 검증 로직 적용
+  useEffect(() => {
+    const checkTeacherRole = async () => {
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+          alert("로그인이 필요합니다.");
+          router.push("/login");
+          return;
+        }
+
+        // profiles 테이블에서 로그인한 유저의 role을 바로 확인
+        const { data: profileData, error: dbError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (dbError || !profileData || profileData.role !== "teacher") {
+          alert("접근 권한이 없습니다. 선생님 계정으로 로그인해 주세요.");
+          router.push("/"); 
+          return;
+        }
+
+        await Promise.all([loadStudents(), loadAllResults()]);
+      } catch (err) {
+        console.error("Auth check error:", err);
+        router.push("/");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkTeacherRole();
+  }, [router]);
+
+  // 데이터 로드: 1. 전체 학생 정보 로드
+  const loadStudents = async () => {
+    const { data, error } = await supabase
       .from("profiles")
-      .select("id, student_id, student_name, parent_name, birth, email")
-    console.log("🔥 profiles data:", data); // 👈 여기
-    if (data) setStudents(data);
+      .select("id, student_id, student_name, parent_name, birth, email, role")
+      .neq("role", "teacher");
+
+    if (error) {
+      console.error("Error loading profiles:", error);
+    }
+    if (data) setStudents(data as Student[]);
   };
 
-  load();
-}, []);
-
-useEffect(() => {
-  const loadAll = async () => {
+  // 데이터 로드: 2. 학생별 최신 리딩 결과 함께 로드
+  const loadAllResults = async () => {
     const { data, error } = await supabase
       .from("profiles")
       .select(`
         id,
         student_id,
         student_name,
+        role,
         reading_results (
           id,
           wpm,
@@ -89,80 +144,77 @@ useEffect(() => {
           created_at
         )
       `)
+      .neq("role", "teacher")
       .order("created_at", {
         foreignTable: "reading_results",
         ascending: false,
       });
 
-    console.log(data);
-    console.log(error);
-
-    if (data) setAllResults(data);
+    if (error) {
+      console.error("Error loading all results:", error);
+    }
+    if (data) setAllResults(data as any);
   };
 
-  loadAll();
-}, []);
+  // 선택된 학생의 상세 결과 가져오기
+  useEffect(() => {
+    if (!selectedStudentId) return;
 
+    const loadResults = async () => {
+      const { data, error } = await supabase
+        .from("reading_results")
+        .select("*")
+        .eq("student_id", selectedStudentId)
+        .order("created_at", { ascending: false });
 
-useEffect(() => {
-  console.log("현재 선택된 user:", selectedStudentId);
-}, [selectedStudentId]);
-  // ✅ 2. 선택된 학생의 결과만 가져오기
-      useEffect(() => {
-        if (!selectedStudentId) return;
+      if (!error) {
+        setResults(data || []);
+      } else {
+        console.error("Error loading detailed results:", error);
+      }
+    };
 
-        const loadResults = async () => {
-          const { data, error } = await supabase
-            .from("reading_results")
-            .select("*")
-            .eq("student_id", selectedStudentId)
-            .order("created_at", { ascending: false });
+    loadResults();
+  }, [selectedStudentId]);
 
-          if (!error) {
-            setResults(data);
-          }
-        };
+  // 검색 필터 및 결과 없는 학생을 포함하여 정렬
+  const filteredUsers = students.filter((u) =>
+    (u.student_name || "").includes(keyword)
+  );
 
-        loadResults();
-      }, [selectedStudentId]); // 🔥 이거 반드시 있어야 함
+  const latestMap = Object.fromEntries(
+    allResults.map((u: any) => {
+      const latest = u.reading_results?.[0] ?? null;
+      const key = u.student_id || u.id;
+      return [key, latest];
+    })
+  );
 
-  // ✅ 3. 검색 필터
-    const filteredUsers = students.filter((u) =>
-      (u.student_name || "").includes(keyword)
-    );
-      // 🔥 여기다 넣는거다 (이 줄 바로 아래)
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    const A = latestMap[a.student_id] || latestMap[a.id];
+    const B = latestMap[b.student_id] || latestMap[b.id];
 
-      const latestMap = Object.fromEntries(
-        allResults.map((u: any) => {
-          const latest = u.reading_results?.[0] ?? null;
-          return [u.id, latest];
-        })
-      );
-      const sortedUsers = [...filteredUsers].sort((a, b) => {
-        const A = latestMap[a.id];
-        const B = latestMap[b.id];
+    const score = (x: any) => {
+      if (!x) return -1; 
+      let risk = 0;
+      if (x.comprehension < 70) risk += 3;
+      if (x.accuracy < 75) risk += 2;
+      if (x.wpm < 80) risk += 1;
+      return risk;
+    };
 
-        const score = (x: any) => {
-          if (!x) return 0;
-          let risk = 0;
-          if (x.comprehension < 70) risk += 3;
-          if (x.accuracy < 75) risk += 2;
-          if (x.wpm < 80) risk += 1;
-          return risk;
-        };
+    return score(B) - score(A);
+  });
 
-        return score(B) - score(A);
-      });
-      const selectedStudent = students.find(
-        (s) => s.student_id === selectedStudentId
-      );
+  const selectedStudent = students.find(
+    (s) => s.student_id === selectedStudentId
+  );
 
-  // status helpers (presentation only)
   const getStatusMeta = (x: any) => {
     if (!x)
       return {
         label: "데이터 없음",
-        cls: "bg-slate-100 text-slate-500",
+        cls: "bg-slate-100 text-slate-500 border border-slate-200",
         Icon: CircleDashed,
       };
     if (x.comprehension < 70)
@@ -190,6 +242,17 @@ useEffect(() => {
     };
   };
 
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent mx-auto"></div>
+          <p className="mt-4 text-sm text-slate-500 font-medium">선생님 권한 및 학생 데이터를 조회하고 있습니다...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-6xl">
@@ -213,7 +276,6 @@ useEffect(() => {
                   학생 목록
                 </h3>
 
-                {/* 🔍 검색 */}
                 <div className="relative mt-3">
                   <Search
                     className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
@@ -228,13 +290,12 @@ useEffect(() => {
                 </div>
               </div>
 
-              {/* 학생 리스트 */}
               <div className="max-h-[70vh] overflow-y-auto">
-                {filteredUsers.length === 0 ? (
+                {sortedUsers.length === 0 ? (
                   <p className="px-5 py-6 text-sm text-slate-400">검색 결과 없음</p>
                 ) : (
                   sortedUsers.map((u) => {
-                    const latest = latestMap[u.id];
+                    const latest = latestMap[u.student_id] || latestMap[u.id];
                     const meta = getStatusMeta(latest);
                     const active = selectedStudentId === u.student_id;
                     return (
@@ -243,7 +304,7 @@ useEffect(() => {
                         onClick={() => setSelectedStudentId(u.student_id)}
                         className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-5 py-3 text-left transition-colors ${
                           active
-                            ? "bg-indigo-50"
+                            ? "bg-indigo-50 border-r-4 border-r-indigo-500"
                             : "bg-white hover:bg-slate-50"
                         }`}
                       >
@@ -251,7 +312,7 @@ useEffect(() => {
                           <div className="truncate text-sm font-semibold text-slate-900">
                             {u.student_name || "이름없음"}
                             {u.birth && (
-                              <span className="ml-1 font-normal text-slate-400">
+                              <span className="ml-1 font-normal text-slate-400 text-xs">
                                 ({u.birth})
                               </span>
                             )}
@@ -294,7 +355,7 @@ useEffect(() => {
                     현재 상태 요약
                   </h3>
 
-                  {results.length > 0 &&
+                  {results.length > 0 ? (
                     (() => {
                       const latest = results[0];
                       const items: { label: string; cls: string }[] = [];
@@ -331,7 +392,12 @@ useEffect(() => {
                           ))}
                         </div>
                       );
-                    })()}
+                    })()
+                  ) : (
+                    <div className="mt-2 text-sm text-slate-500">
+                      진단 테스트 내역이 존재하지 않아 요약 정보를 표시할 수 없습니다.
+                    </div>
+                  )}
                 </div>
 
                 {results.length === 0 && (
@@ -344,7 +410,7 @@ useEffect(() => {
                 {results.length > 0 &&
                   results.map((d) => {
                     if (!d.reference_text || !d.recognized_text) {
-                      return null; // 🔥 핵심 방어
+                      return null; 
                     }
 
                     return (
@@ -352,7 +418,6 @@ useEffect(() => {
                         key={d.id}
                         className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                       >
-                        {/* header */}
                         <div className="border-b border-slate-100 bg-slate-50/60 px-6 py-4">
                           <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
                             <FileText className="h-4 w-4 text-indigo-500" aria-hidden={true} />
@@ -507,86 +572,88 @@ useEffect(() => {
                               </div>
                             </div>
 
-                            {/* 3️⃣ 🔥 비교 결과 (핵심) */}
+                            {/* 3️⃣ 비교 결과 (SSR 정적 빌드 오류 원천 가드 수정) */}
                             <div>
                               <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
                                 <Target className="h-4 w-4 text-indigo-500" aria-hidden={true} />
                                 비교 결과
                               </h4>
                               <div className="mt-2 flex flex-wrap gap-x-1 gap-y-1 rounded-xl bg-slate-50 p-4 leading-loose text-slate-700 [word-break:break-word]">
-                                {(() => {
-                                  const ref = (d.reference_text || "").split(" ");
-                                  const spoken = (d.recognized_text || "").split(" ");
+                                {isMounted ? (
+                                  (() => {
+                                    const ref = (d.reference_text || "").split(" ");
+                                    const spoken = (d.recognized_text || "").split(" ");
 
-                                  const refClean = ref.map((w: string) => w.replace(/[^a-z]/gi, "").toLowerCase());
-                                  const spokenClean = spoken.map((w: string) => w.replace(/[^a-z]/gi, "").toLowerCase());
+                                    const refClean = ref.map((w: string) => w.replace(/[^a-z]/gi, "").toLowerCase());
+                                    const spokenClean = spoken.map((w: string) => w.replace(/[^a-z]/gi, "").toLowerCase());
 
-                                  // 🔥 LCS DP
-                                  const dp = Array(ref.length + 1)
-                                    .fill(0)
-                                    .map(() => Array(spoken.length + 1).fill(0));
+                                    const dp = Array(ref.length + 1)
+                                      .fill(0)
+                                      .map(() => Array(spoken.length + 1).fill(0));
 
-                                  for (let i = 1; i <= ref.length; i++) {
-                                    for (let j = 1; j <= spoken.length; j++) {
-                                      if (refClean[i - 1] === spokenClean[j - 1]) {
-                                        dp[i][j] = dp[i - 1][j - 1] + 1;
-                                      } else {
-                                        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                                    for (let i = 1; i <= ref.length; i++) {
+                                      for (let j = 1; j <= spoken.length; j++) {
+                                        if (refClean[i - 1] === spokenClean[j - 1]) {
+                                          dp[i][j] = dp[i - 1][j - 1] + 1;
+                                        } else {
+                                          dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                                        }
                                       }
                                     }
-                                  }
 
-                                  // 🔥 backtrack
-                                  let i = ref.length;
-                                  let j = spoken.length;
-                                  const result: any[] = [];
+                                    let i = ref.length;
+                                    let j = spoken.length;
+                                    const resultElements: any[] = [];
 
-                                  while (i > 0 && j > 0) {
-                                    if (refClean[i - 1] === spokenClean[j - 1]) {
-                                      result.unshift(
-                                        <span key={`${i}-${j}`} className="text-slate-700">
+                                    while (i > 0 && j > 0) {
+                                      if (refClean[i - 1] === spokenClean[j - 1]) {
+                                        resultElements.unshift(
+                                          <span key={`match-${i}-${j}`} className="text-slate-700">
+                                            {ref[i - 1]}
+                                          </span>
+                                        );
+                                        i--;
+                                        j--;
+                                      } else if (dp[i - 1][j] > dp[i][j - 1]) {
+                                        resultElements.unshift(
+                                          <span key={`miss-${i}`} className="rounded bg-blue-100 px-1 font-medium text-blue-700">
+                                            {ref[i - 1]}
+                                          </span>
+                                        );
+                                        i--;
+                                      } else {
+                                        resultElements.unshift(
+                                          <span key={`err-${j}`} className="rounded bg-amber-100 px-1 font-medium text-amber-700">
+                                            {spoken[j - 1]}
+                                          </span>
+                                        );
+                                        j--;
+                                      }
+                                    }
+
+                                    while (i > 0) {
+                                      resultElements.unshift(
+                                        <span key={`miss-remain-${i}`} className="rounded bg-blue-100 px-1 font-medium text-blue-700">
                                           {ref[i - 1]}
                                         </span>
                                       );
                                       i--;
-                                      j--;
-                                    } else if (dp[i - 1][j] > dp[i][j - 1]) {
-                                      result.unshift(
-                                        <span key={`m-${i}`} className="rounded bg-blue-100 px-1 font-medium text-blue-700">
-                                          {ref[i - 1]}
-                                        </span>
-                                      );
-                                      i--;
-                                    } else {
-                                      result.unshift(
-                                        <span key={`e-${j}`} className="rounded bg-amber-100 px-1 font-medium text-amber-700">
+                                    }
+
+                                    while (j > 0) {
+                                      resultElements.unshift(
+                                        <span key={`err-remain-${j}`} className="rounded bg-amber-100 px-1 font-medium text-amber-700">
                                           {spoken[j - 1]}
                                         </span>
                                       );
                                       j--;
                                     }
-                                  }
 
-                                  while (i > 0) {
-                                    result.unshift(
-                                      <span key={`m-${i}`} className="rounded bg-blue-100 px-1 font-medium text-blue-700">
-                                        {ref[i - 1]}
-                                      </span>
-                                    );
-                                    i--;
-                                  }
-
-                                  while (j > 0) {
-                                    result.unshift(
-                                      <span key={`e-${j}`} className="rounded bg-amber-100 px-1 font-medium text-amber-700">
-                                        {spoken[j - 1]}
-                                      </span>
-                                    );
-                                    j--;
-                                  }
-
-                                  return result;
-                                })()}
+                                    return resultElements;
+                                  })()
+                                ) : (
+                                  <div className="h-6 w-32 bg-slate-100 animate-pulse rounded" />
+                                )}
                               </div>
                               <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
                                 <span className="inline-flex items-center gap-1">
@@ -631,7 +698,9 @@ useEffect(() => {
                                 <p>
                                   단어: {d.spoken_words} / {d.total_words}
                                 </p>
-                                <p>커버리지: {Math.round(d.coverage * 100)}%</p>
+                                {d.coverage != null && (
+                                  <p>커버리지: {Math.round(d.coverage * 100)}%</p>
+                                )}
                               </div>
                             ) : !d.duration_sec && !d.spoken_words ? (
                               <p className="flex items-center gap-2 rounded-xl bg-amber-50 p-4 font-medium text-amber-700">
@@ -646,7 +715,7 @@ useEffect(() => {
                             )}
                           </div>
 
-                          {d.flags?.length > 0 && (
+                          {d.flags && d.flags.length > 0 && (
                             <div className="mt-3 flex items-center gap-2 rounded-xl bg-red-50 p-4 text-sm font-medium text-red-700">
                               <AlertTriangle className="h-4 w-4" aria-hidden={true} />
                               {d.flags.join(", ")}

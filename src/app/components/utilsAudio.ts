@@ -1,39 +1,32 @@
 export async function blobToPCM16kMono(blob: Blob): Promise<Uint8Array> {
   const arrayBuf = await new Promise<ArrayBuffer>((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onload = () => resolve(reader.result as ArrayBuffer);
-  reader.onerror = reject;
-  reader.readAsArrayBuffer(blob);
-});
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(blob);
+  });
   const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  console.log("🔥 decode 시작");
-  console.log("🔥 decode 시작");
 
-let decoded: AudioBuffer;
+  let decoded: AudioBuffer;
 
-try {
-  decoded = await Promise.race([
-    new Promise<AudioBuffer>((resolve, reject) => {
-      audioCtx.decodeAudioData(
-        arrayBuf.slice(0),
-        (buffer) => resolve(buffer),
-        (err) => reject(err)
-      );
-    }),
-    new Promise<AudioBuffer>((_, reject) =>
-      setTimeout(() => reject(new Error("decode timeout")), 3000)
-    ),
-  ]);
-} catch (e) {
-  console.error("🔥 decode 실패 → fallback", e);
+  try {
+    decoded = await Promise.race([
+      new Promise<AudioBuffer>((resolve, reject) => {
+        audioCtx.decodeAudioData(
+          arrayBuf.slice(0),
+          (buffer) => resolve(buffer),
+          (err) => reject(err)
+        );
+      }),
+      new Promise<AudioBuffer>((_, reject) =>
+        setTimeout(() => reject(new Error("decode timeout")), 3000)
+      ),
+    ]);
+  } catch (e) {
+    console.error("🔥 decode 실패 → fallback", e);
 
-  return new Uint8Array(arrayBuf);
-}
-
-
-
-console.log("🔥 decode 성공");
-
+    return new Uint8Array(arrayBuf);
+  }
 
   const targetSampleRate = 16000;
   const offline = new OfflineAudioContext(1, Math.ceil(decoded.duration * targetSampleRate), targetSampleRate);
@@ -54,6 +47,7 @@ console.log("🔥 decode 성공");
 
   return new Uint8Array(pcm16.buffer);
 }
+
 export function pcmToWav(pcmData: Uint8Array) {
   const sampleRate = 16000;
   const channels = 1;

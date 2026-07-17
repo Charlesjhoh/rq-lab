@@ -26,8 +26,8 @@ export async function POST(req: NextRequest) {
     // 🔥 Push Stream 생성
     const pushStream = SpeechSDK.AudioInputStream.createPushStream();
     
-const uint8Array = new Uint8Array(buffer);
-pushStream.write(uint8Array.buffer);
+    const uint8Array = new Uint8Array(buffer);
+    pushStream.write(uint8Array.buffer);
     pushStream.close();
 
     const audioConfig = SpeechSDK.AudioConfig.fromStreamInput(pushStream);
@@ -62,8 +62,6 @@ pushStream.write(uint8Array.buffer);
     recognizer.close();
 
     const recallText = collectedText.trim();
-
-    console.log("Recall text:", recallText);
 
     if (!recallText || recallText.length < 5) {
       return NextResponse.json({
@@ -137,51 +135,47 @@ Rules:
       }
     );
 
-const gptData = await openaiRes.json();
-console.log("🔥 GPT RAW:", gptData);
+    const gptData = await openaiRes.json();
 
-let parsed;
-let content = ""; // 🔥 먼저 선언
+    let parsed;
+    let content = ""; // 🔥 먼저 선언
 
-try {
-  content = gptData.choices?.[0]?.message?.content;
+    try {
+      content = gptData.choices?.[0]?.message?.content;
 
-  console.log("🔥 GPT CONTENT:", content); // ✅ 여기서 찍어야 함
+      if (!content) {
+        throw new Error("GPT 응답 없음");
+      }
 
-  if (!content) {
-    throw new Error("GPT 응답 없음");
-  }
+      content = content
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim();
 
-  content = content
-    .replace(/```json/g, "")
-    .replace(/```/g, "")
-    .trim();
+      parsed = JSON.parse(content);
 
-  parsed = JSON.parse(content);
+    } catch (e) {
+      console.error("🔥 JSON 파싱 실패:", e);
 
-} catch (e) {
-  console.error("🔥 JSON 파싱 실패:", e);
-  console.log("🔥 content:", content);
-
-  return NextResponse.json({
-    recallText,
-    score: 0,
-    good: [],
-    bad: [],
-    summary: "분석 실패"
-  });
-}
+      return NextResponse.json({
+        recallText,
+        score: 0,
+        good: [],
+        bad: [],
+        summary: "분석 실패"
+      });
+    }
     const score =
-  typeof parsed.score === "number" ? parsed.score : 60;
+      typeof parsed.score === "number" ? parsed.score : 60;
 
 
-return NextResponse.json({
-  recallText,
-  score,
-  good: parsed.good ?? [],
-  bad: parsed.bad ?? [],
-  summary: parsed.summary ?? "",
-});
+    return NextResponse.json({
+      recallText,
+      score,
+      good: parsed.good ?? [],
+      bad: parsed.bad ?? [],
+      summary: parsed.summary ?? "",
+    });
 
   } catch (e: any) {
     console.error("Comprehension API error:", e?.message || e);
