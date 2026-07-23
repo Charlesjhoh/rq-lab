@@ -1,55 +1,42 @@
-import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { NextRequest, NextResponse } from "next/server";
+import Stripe from "stripe";
 
-// Stripe SDK 초기화 (서버 전용 비밀키 사용)
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16' as any, // 최신 API 버전 지정
-});
+// 🔥 [필수 1] Next.js 빌드 시 정적 수집 대상에서 제외 (동적 API 강제)
+export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { amount, currency = 'usd', couponCode, userId, classId } = await request.json();
-
-    // 1. 필수 입력값 검증 (결제 금액이 0 이하인 경우 방지)
-    if (!amount || amount <= 0) {
+    const apiKey = process.env.STRIPE_SECRET_KEY;
+    
+    if (!apiKey) {
       return NextResponse.json(
-        { message: '올바른 결제 금액(amount)이 필요합니다.' },
-        { status: 400 }
+        { error: "Stripe API Key가 설정되지 않았습니다." },
+        { status: 500 }
       );
     }
 
-    // 2. Stripe PaymentIntent 생성
-    // Stripe는 금액을 소수점이 없는 단위(예: $10.00 -> 1000 cents)로 처리해야 합니다.
-    const unitAmount = Math.round(amount * 100);
-
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: unitAmount,
-      currency: currency.toLowerCase(),
-      // 자동 결제 수단 활성화 (카드, Apple Pay, Google Pay 등)
-      automatic_payment_methods: {
-        enabled: true,
-      },
-      // 정산 및 추적을 위한 메타데이터 저장
-      metadata: {
-        userId: userId || 'guest',
-        classId: classId || 'unknown',
-        couponCode: couponCode || 'NONE',
-        issuer: couponCode ? 'GGUG' : 'DIRECT', // 정산 주체 기록
-      },
+    // 🔥 [필수 2] Stripe 객체를 요청 처리(POST) 함수 안에서 초기화
+    const stripe = new Stripe(apiKey, {
+      apiVersion: "2023-10-16" as any, // 사용 중인 Stripe API 버전
     });
 
-    // 3. 성공 응답 반환 (클라이언트 결제 완료용 clientSecret)
+    const body = await req.json();
+    const { amount, currency = "usd" } = body;
+
+    // PaymentIntent 생성
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency,
+      automatic_payment_methods: { enabled: true },
+    });
+
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
-      paymentIntentId: paymentIntent.id,
-      amount: amount,
-      currency: currency,
     });
-
-  } catch (err: any) {
-    console.error('Stripe PaymentIntent 생성 에러:', err);
+  } catch (error: any) {
+    console.error("Payment Intent Error:", error);
     return NextResponse.json(
-      { message: err.message || 'Stripe 결제 요청 생성 중 오류가 발생했습니다.' },
+      { error: error.message || "Internal Server Error" },
       { status: 500 }
     );
   }
