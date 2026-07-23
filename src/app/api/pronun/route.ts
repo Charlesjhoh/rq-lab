@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
     const wrongWords: string[] = [];
     let j = 0;
 
-    // Window 크기를 12로 확장하여 단어 생략/추가 시에도 매칭 위치를 찾아냄
+    // Window 크기를 12로 확장하여 단어 생략/추가 시에도 매칭 위치를 잘 찾아내도록 보정
     const LOOK_AHEAD = 12;
 
     for (let i = 0; i < refWords.length; i++) {

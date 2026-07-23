@@ -245,7 +245,6 @@ export default function StepTestClient({
   };
 
   /* ---------------- 평가 실행 ---------------- */
-  /* ---------------- 평가 실행 ---------------- */
   const runAssessment = async (
     recallBlobParam: Blob,
     audioBlobParam: Blob | null
