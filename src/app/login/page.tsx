@@ -13,79 +13,58 @@ export default function LoginPage() {
 
   useEffect(() => {
     const checkSession = async () => {
-
       const { data } = await supabase.auth.getSession();
 
       if (data.session?.user) {
-        const userId = data.session.user.id;
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("id", userId)
-          .maybeSingle();
-
-        if (profile) {
-          router.replace(`/reading-test?profile_id=${profile.id}`);
-        } else {
-          router.replace("/onboarding");
-        }
+        // 이미 로그인 상태면 정보를 확인/입력할 수 있는 폼 페이지로 이동
+        router.replace("/onboarding"); // (프로젝트 구조에 따라 "/" 또는 "/onboarding")
       }
     };
 
     checkSession();
   }, [router]);
 
-    const handleLogin = async () => {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: true,
-        },
-      });
+  const handleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
+      },
+    });
     if (error) {
       console.log(error);
-    alert(error.message);
-    return;
-  }
+      alert(error.message);
+      return;
+    }
 
-  alert("인증번호가 이메일로 전송되었습니다.");
-  setStep("otp");
-};
+    alert("인증번호가 이메일로 전송되었습니다.");
+    setStep("otp");
+  };
 
-    const handleVerifyOtp = async () => {
-      const { error } = await supabase.auth.verifyOtp({
-        email,
-        token: otp,
-        type: "email",
-      });
+  const handleVerifyOtp = async () => {
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token: otp,
+      type: "email",
+    });
 
-      if (error) {
-        alert("인증번호가 올바르지 않습니다.");
-        return;
-      }
+    if (error) {
+      alert("인증번호가 올바르지 않습니다.");
+      return;
+    }
 
-      const { data } = await supabase.auth.getSession();
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user;
 
-      const user = data.session?.user;
+    if (!user) {
+      alert("로그인 실패");
+      return;
+    }
 
-      if (!user) {
-        alert("로그인 실패");
-        return;
-      }
+    // 로그인 완료 후 폼 화면으로 이동
+    router.replace("/onboarding");
+  };
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profile) {
-        router.replace(`/reading-test?profile_id=${profile.id}`);
-      } else {
-        router.replace("/onboarding");
-      }
-    };
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4 font-sans text-slate-900">
       <div className="grid w-full max-w-4xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5 md:grid-cols-2">
