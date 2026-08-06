@@ -20,6 +20,9 @@ import {
   Calendar,
   Mail,
   User,
+  Wallet,
+  Lock,
+  LockOpen,
 } from "lucide-react";
 
 // 타입 선언
@@ -35,6 +38,7 @@ type Student = {
 
 type ReadingResult = {
   id: string;
+  user_id?: string;
   wpm: number;
   accuracy: number;
   comprehension: number;
@@ -49,14 +53,22 @@ type ReadingResult = {
   total_words?: number;
   coverage?: number;
   flags?: string[];
+  is_unlocked?: boolean;
+  unlock_source?: string | null;
 };
 
-type StudentWithResults = {
-  id: string;
-  student_id: string;
-  student_name: string;
-  reading_results: ReadingResult[];
-};
+async function authedFetch(path: string, options: RequestInit = {}) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("로그인이 필요합니다.");
+
+  return fetch(path, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  });
+}
 
 export default function TeacherPage() {
   const router = useRouter();
@@ -64,10 +76,11 @@ export default function TeacherPage() {
   // 상태 관리
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
-  const [allResults, setAllResults] = useState<StudentWithResults[]>([]);
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [latestByProfileId, setLatestByProfileId] = useState<Record<string, ReadingResult | null>>({});
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [results, setResults] = useState<ReadingResult[]>([]);
   const [keyword, setKeyword] = useState("");
+  const [credits, setCredits] = useState<{ remaining: number; nearestExpiry: string | null } | null>(null);
 
   // 정적 페이지 프리렌더링 시 레이아웃 붕괴 및 경고를 원천 차단하기 위한 마운트 가드
   const [isMounted, setIsMounted] = useState(false);
@@ -95,9 +108,9 @@ export default function TeacherPage() {
           .eq("id", user.id)
           .single();
 
-        if (dbError || !profileData || profileData.role !== "teacher") {
+        if (dbError || !profileData || !["teacher", "manager"].includes(profileData.role)) {
           alert("접근 권한이 없습니다. 선생님 계정으로 로그인해 주세요.");
-          router.push("/"); 
+          router.push("/");
           return;
         }
 
@@ -114,85 +127,92 @@ export default function TeacherPage() {
   }, [router]);
 
   // 데이터 로드: 1. 전체 학생 정보 로드
+  // 💡 다른 유저의 profiles 행을 읽는 조회라 RLS(본인 행만 허용)를 우회할 수 없음 —
+  // 서버에서 teacher/manager role을 재검증하는 /api/teacher/students를 통해 가져온다.
   const loadStudents = async () => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, student_id, student_name, parent_name, birth, email, role")
-      .neq("role", "teacher");
-
-    if (error) {
-      console.error("Error loading profiles:", error);
+    try {
+      const res = await authedFetch("/api/teacher/students");
+      if (res.ok) {
+        const data = await res.json();
+        setStudents(data.students || []);
+      } else {
+        console.error("Error loading profiles:", await res.text());
+      }
+    } catch (err) {
+      console.error("Error loading profiles:", err);
     }
-    if (data) setStudents(data as Student[]);
   };
 
   // 데이터 로드: 2. 학생별 최신 리딩 결과 함께 로드
+  // 💡 profiles<->reading_results 중첩 조인은 FK 관계 설정에 의존하고, student_id는
+  // 시험 응시 시점에만 복사되는 값이라 비어있는 경우가 있어 매칭이 깨질 수 있었음.
+  // 항상 채워지는 profiles.id <-> reading_results.user_id로 클라이언트에서 직접 매칭한다.
+  // (다른 유저의 reading_results 조회이므로 이것도 서버 role 검증 라우트를 통해 가져온다)
   const loadAllResults = async () => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select(`
-        id,
-        student_id,
-        student_name,
-        role,
-        reading_results (
-          id,
-          wpm,
-          accuracy,
-          comprehension,
-          final_ar,
-          created_at
-        )
-      `)
-      .neq("role", "teacher")
-      .order("created_at", {
-        foreignTable: "reading_results",
-        ascending: false,
-      });
+    try {
+      const res = await authedFetch("/api/teacher/results");
+      if (!res.ok) {
+        console.error("Error loading all results:", await res.text());
+        return;
+      }
 
-    if (error) {
-      console.error("Error loading all results:", error);
+      const { results: data } = await res.json();
+      const map: Record<string, ReadingResult> = {};
+      for (const r of data || []) {
+        if (r.user_id && !map[r.user_id]) {
+          map[r.user_id] = r as ReadingResult;
+        }
+      }
+      setLatestByProfileId(map);
+    } catch (err) {
+      console.error("Error loading all results:", err);
     }
-    if (data) setAllResults(data as any);
   };
 
   // 선택된 학생의 상세 결과 가져오기
   useEffect(() => {
-    if (!selectedStudentId) return;
+    if (!selectedProfileId) {
+      setCredits(null);
+      return;
+    }
 
     const loadResults = async () => {
-      const { data, error } = await supabase
-        .from("reading_results")
-        .select("*")
-        .eq("student_id", selectedStudentId)
-        .order("created_at", { ascending: false });
+      try {
+        const res = await authedFetch(`/api/teacher/results?userId=${selectedProfileId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setResults(data.results || []);
+        } else {
+          console.error("Error loading detailed results:", await res.text());
+        }
+      } catch (err) {
+        console.error("Error loading detailed results:", err);
+      }
+    };
 
-      if (!error) {
-        setResults(data || []);
-      } else {
-        console.error("Error loading detailed results:", error);
+    const loadCredits = async () => {
+      try {
+        const res = await authedFetch(`/api/teacher/credits?userId=${selectedProfileId}`);
+        if (res.ok) {
+          setCredits(await res.json());
+        }
+      } catch (err) {
+        console.error("Error loading credit status:", err);
       }
     };
 
     loadResults();
-  }, [selectedStudentId]);
+    loadCredits();
+  }, [selectedProfileId]);
 
   // 검색 필터 및 결과 없는 학생을 포함하여 정렬
   const filteredUsers = students.filter((u) =>
     (u.student_name || "").includes(keyword)
   );
 
-  const latestMap = Object.fromEntries(
-    allResults.map((u: any) => {
-      const latest = u.reading_results?.[0] ?? null;
-      const key = u.student_id || u.id;
-      return [key, latest];
-    })
-  );
-
   const sortedUsers = [...filteredUsers].sort((a, b) => {
-    const A = latestMap[a.student_id] || latestMap[a.id];
-    const B = latestMap[b.student_id] || latestMap[b.id];
+    const A = latestByProfileId[a.id];
+    const B = latestByProfileId[b.id];
 
     const score = (x: any) => {
       if (!x) return -1; 
@@ -207,7 +227,7 @@ export default function TeacherPage() {
   });
 
   const selectedStudent = students.find(
-    (s) => s.student_id === selectedStudentId
+    (s) => s.id === selectedProfileId
   );
 
   const getStatusMeta = (x: any) => {
@@ -295,13 +315,13 @@ export default function TeacherPage() {
                   <p className="px-5 py-6 text-sm text-slate-400">검색 결과 없음</p>
                 ) : (
                   sortedUsers.map((u) => {
-                    const latest = latestMap[u.student_id] || latestMap[u.id];
+                    const latest = latestByProfileId[u.id];
                     const meta = getStatusMeta(latest);
-                    const active = selectedStudentId === u.student_id;
+                    const active = selectedProfileId === u.id;
                     return (
                       <button
                         key={u.id}
-                        onClick={() => setSelectedStudentId(u.student_id)}
+                        onClick={() => setSelectedProfileId(u.id)}
                         className={`flex w-full items-center justify-between gap-2 border-b border-slate-100 px-5 py-3 text-left transition-colors ${
                           active
                             ? "bg-indigo-50 border-r-4 border-r-indigo-500"
@@ -334,7 +354,7 @@ export default function TeacherPage() {
 
           {/* 👉 우측: 학생 결과 */}
           <section className="min-w-0 flex-1">
-            {!selectedStudentId ? (
+            {!selectedProfileId ? (
               <div className="flex min-h-[50vh] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-16 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
                   <Users className="h-6 w-6 text-slate-400" aria-hidden={true} />
@@ -400,6 +420,29 @@ export default function TeacherPage() {
                   )}
                 </div>
 
+                {/* 결제 현황 */}
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <Wallet className="h-4 w-4 text-indigo-500" aria-hidden={true} />
+                    결제 현황
+                  </h3>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
+                      리포트 결제 {results.filter((r) => r.is_unlocked).length} / {results.length}회
+                    </span>
+                    {credits && credits.remaining > 0 ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-3 py-1 font-medium text-indigo-700">
+                        패키지 잔여 {credits.remaining}회
+                        {credits.nearestExpiry && ` · ${new Date(credits.nearestExpiry).toLocaleDateString("ko-KR")}까지`}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-400">
+                        보유 패키지 없음
+                      </span>
+                    )}
+                  </div>
+                </div>
+
                 {results.length === 0 && (
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-400 shadow-sm">
                     아직 테스트 데이터 없음
@@ -419,10 +462,23 @@ export default function TeacherPage() {
                         className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                       >
                         <div className="border-b border-slate-100 bg-slate-50/60 px-6 py-4">
-                          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                            <FileText className="h-4 w-4 text-indigo-500" aria-hidden={true} />
-                            테스트 기록
-                          </h3>
+                          <div className="flex items-center justify-between gap-2">
+                            <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                              <FileText className="h-4 w-4 text-indigo-500" aria-hidden={true} />
+                              테스트 기록
+                            </h3>
+                            {d.is_unlocked ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+                                <LockOpen className="h-3 w-3" aria-hidden={true} />
+                                결제완료{d.unlock_source === "package_credit" ? " · 패키지" : ""}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500">
+                                <Lock className="h-3 w-3" aria-hidden={true} />
+                                미결제
+                              </span>
+                            )}
+                          </div>
                           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
                             <span className="inline-flex items-center gap-1">
                               <Calendar className="h-3.5 w-3.5" aria-hidden={true} />

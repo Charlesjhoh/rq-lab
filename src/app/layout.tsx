@@ -4,7 +4,7 @@ import "./globals.css";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import { useEffect, useState } from "react";
-import { BookOpen, FileText, LogOut, LogIn } from "lucide-react";
+import { BookOpen, FileText, LogOut, LogIn, Wallet, Users, BarChart3 } from "lucide-react";
 
 export default function RootLayout({
   children,
@@ -14,11 +14,18 @@ export default function RootLayout({
   const router = useRouter();
 
   const [userId, setUserId] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUserId(null);
+    setRole(null);
     router.replace("/login");
+  };
+
+  const loadRole = async (uid: string) => {
+    const { data } = await supabase.from("profiles").select("role").eq("id", uid).maybeSingle();
+    setRole(data?.role || null);
   };
 
 useEffect(() => {
@@ -28,6 +35,7 @@ useEffect(() => {
 
     if (session?.user) {
       setUserId(session.user.id);
+      loadRole(session.user.id);
     }
   };
 
@@ -38,8 +46,10 @@ useEffect(() => {
     (_event, session) => {
       if (session?.user) {
         setUserId(session.user.id);
+        loadRole(session.user.id);
       } else {
         setUserId(null);
+        setRole(null);
       }
     }
   );
@@ -80,6 +90,36 @@ useEffect(() => {
                 <FileText className="h-4 w-4" aria-hidden={true} />
                 리포트
               </button>
+
+              {userId && (
+                <button
+                  onClick={() => router.push("/mypage")}
+                  className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                >
+                  <Wallet className="h-4 w-4" aria-hidden={true} />
+                  마이페이지
+                </button>
+              )}
+
+              {(role === "teacher" || role === "manager") && (
+                <button
+                  onClick={() => router.push("/teacher")}
+                  className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                >
+                  <Users className="h-4 w-4" aria-hidden={true} />
+                  선생님
+                </button>
+              )}
+
+              {role === "manager" && (
+                <button
+                  onClick={() => router.push("/manager")}
+                  className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                >
+                  <BarChart3 className="h-4 w-4" aria-hidden={true} />
+                  매니저
+                </button>
+              )}
 
               {userId ? (
                 <button

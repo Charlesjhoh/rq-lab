@@ -129,30 +129,44 @@ export default function StepTestClient({
 
   useEffect(() => {
     const loadPassage = async () => {
-      if (!selectedLevel) return;
+      if (!selectedLevel || !user?.id) return;
       const lvl = parseFloat(selectedLevel);
 
-      const { data } = await supabase
+      // 1. 유저가 이미 풀어본 지문(passage) 목록을 DB에서 가져옴
+      const { data: userHistory } = await supabase
+        .from("reading_results")
+        .select("reference_text")
+        .eq("user_id", user.id);
+
+      const readTexts = userHistory?.map((h) => h.reference_text).filter(Boolean) || [];
+
+      // 2. 해당 레벨의 전체 지문 조회
+      const { data: allPassages } = await supabase
         .from("passages")
         .select("*")
         .gte("ar_max", lvl)
         .lte("ar_min", lvl);
 
-      if (data && data.length > 0) {
-        let candidates = data;
-        if (lastPassageId) {
-          candidates = data.filter((p) => p.id !== lastPassageId);
-        }
-        if (candidates.length === 0) candidates = data;
+      if (allPassages && allPassages.length > 0) {
+        // 3. 이미 풀어본 지문(content 기준)을 제외한 신규 지문만 필터링
+        let unreadPassages = allPassages.filter(
+          (p) => !readTexts.includes(p.content)
+        );
 
-        const random = candidates[Math.floor(Math.random() * candidates.length)];
+        // 4. 만약 안 풀어본 지문이 없으면(지문 고갈 시) 전체 지문 중 랜덤으로 예외 처리(Fallback)
+        if (unreadPassages.length === 0) {
+          unreadPassages = allPassages;
+        }
+
+        // 5. 최종 후보 중 1개 랜덤 추출
+        const random = unreadPassages[Math.floor(Math.random() * unreadPassages.length)];
         setPassage(random);
         setLastPassageId(random.id);
       }
     };
 
     loadPassage();
-  }, [selectedLevel]);
+  }, [selectedLevel, user?.id]);
 
   /* ---------------- 카운트다운 ---------------- */
   useEffect(() => {
@@ -394,28 +408,44 @@ export default function StepTestClient({
       .eq("id", currentUser.id)
       .maybeSingle();
 
-    await supabase.from("reading_results").insert([
-      {
-        user_id: currentUser.id,
-        profile_id: profileId,
-        student_id: profile?.student_id,
-        wpm: safeWpm,
-        accuracy: safeAccuracy,
-        comprehension: comprehensionScore,
-        final_ar: finalAR,
-        duration_sec: durationSec,
-        spoken_words: correctWordCount,
-        total_words: originalWordCount,
-        coverage: readingCoverage,
-        recognized_text: recognizedText,
-        reference_text: refText,
-        bad_pronunciations: badPronunciations,
-        wrong_words: wrongWords,
-        ai_score: compData.score ?? 0,
-        ai_comment: compData.summary ?? "분석 결과 없음",
-        recall_text: recallText,
-      },
-    ]);
+    const { data: insertedResult } = await supabase
+      .from("reading_results")
+      .insert([
+        {
+          user_id: currentUser.id,
+          profile_id: profileId,
+          student_id: profile?.student_id,
+          wpm: safeWpm,
+          accuracy: safeAccuracy,
+          comprehension: comprehensionScore,
+          final_ar: finalAR,
+          duration_sec: durationSec,
+          spoken_words: correctWordCount,
+          total_words: originalWordCount,
+          coverage: readingCoverage,
+          recognized_text: recognizedText,
+          reference_text: refText,
+          bad_pronunciations: badPronunciations,
+          wrong_words: wrongWords,
+          ai_score: compData.score ?? 0,
+          ai_comment: compData.summary ?? "분석 결과 없음",
+          recall_text: recallText,
+        },
+      ])
+      .select()
+      .single();
+
+    // 보유 패키지 크레딧이 있으면 자동으로 프리미엄 리포트 잠금 해제 (없으면 조용히 스킵)
+    if (insertedResult?.id && sessionData.session?.access_token) {
+      fetch("/api/credits/consume", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
+        body: JSON.stringify({ resultId: insertedResult.id }),
+      }).catch((err) => console.error("크레딧 자동 소진 실패:", err));
+    }
 
     let levelUp: "AR2" | "AR3" | null = null;
     if (currentLevel === "AR1" && safeWpm >= 80 && safeAccuracy >= 85) levelUp = "AR2";

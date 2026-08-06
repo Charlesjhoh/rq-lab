@@ -232,7 +232,6 @@ function ClientPart() {
 
                   <button
                     onClick={() => {
-                      alert("베타 기간 동안 프리미엄 리포트를 무료로 제공합니다.");
                       router.push(`/premium-report?result_id=${d.id}`);
                     }}
                     className="mt-4 flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"

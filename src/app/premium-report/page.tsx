@@ -383,11 +383,14 @@ function ClientPart() {
   const [books, setBooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const resultId = searchParams.get("result_id");
-  
+
   const [studentName, setStudentName] = useState("학생");
   const [isExporting, setIsExporting] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
   const [formattedDate, setFormattedDate] = useState("2026.07.16");
+  const [remainingCredits, setRemainingCredits] = useState(0);
+  const [unlocking, setUnlocking] = useState(false);
+  const [unlockError, setUnlockError] = useState<string | null>(null);
 
   const [isMounted, setIsMounted] = useState(false);
 
@@ -440,6 +443,20 @@ function ClientPart() {
               const dd = String(today.getDate()).padStart(2, "0");
               setFormattedDate(`${yyyy}.${mm}.${dd}`);
             }
+          }
+        }
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: packages } = await supabase
+            .from("credit_packages")
+            .select("remaining_credits")
+            .eq("user_id", session.user.id)
+            .gt("remaining_credits", 0)
+            .gt("expires_at", new Date().toISOString());
+
+          if (packages) {
+            setRemainingCredits(packages.reduce((sum, p) => sum + p.remaining_credits, 0));
           }
         }
 
@@ -541,6 +558,50 @@ function ClientPart() {
     }
   };
 
+  const handleUnlockWithCredit = async () => {
+    if (!resultId) return;
+    setUnlocking(true);
+    setUnlockError(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setUnlockError("로그인이 필요합니다.");
+        return;
+      }
+
+      const res = await fetch("/api/credits/consume", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ resultId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setUnlockError(data.error || "잠금 해제 중 오류가 발생했습니다.");
+        return;
+      }
+
+      if (data.consumed) {
+        setResult((prev: any) => ({ ...prev, is_unlocked: true, unlock_source: "package_credit" }));
+        setRemainingCredits((prev) => Math.max(0, prev - 1));
+      } else if (data.alreadyUnlocked) {
+        setResult((prev: any) => ({ ...prev, is_unlocked: true }));
+      } else {
+        setUnlockError("사용 가능한 패키지 크레딧이 없습니다.");
+      }
+    } catch (err) {
+      console.error(err);
+      setUnlockError("잠금 해제 중 오류가 발생했습니다.");
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50/50 flex flex-col items-center justify-center p-6">
@@ -559,6 +620,50 @@ function ClientPart() {
           <p className="text-xs text-slate-500 leading-relaxed">
             유효하지 않은 고유 ID이거나 매칭 레코드를 로드해오지 못했습니다. 다시 시도해 주세요.
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!result.is_unlocked) {
+    return (
+      <div className="min-h-screen bg-slate-50/50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-white border border-slate-100 shadow-sm p-8 rounded-3xl max-w-sm w-full">
+          <Sparkles className="h-9 w-9 text-indigo-500 mx-auto mb-3" />
+          <h2 className="text-lg font-bold text-slate-800 mb-2">프리미엄 리포트가 준비되었어요</h2>
+          <p className="text-sm text-slate-500 leading-relaxed mb-6">
+            AI 정밀 분석, 4주 로드맵, 맞춤 도서 추천까지<br />전체 리포트를 열람하려면 잠금 해제가 필요합니다.
+          </p>
+
+          {unlockError && (
+            <div className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-2.5 mb-4">
+              {unlockError}
+            </div>
+          )}
+
+          <div className="space-y-2.5">
+            {remainingCredits > 0 && (
+              <button
+                onClick={handleUnlockWithCredit}
+                disabled={unlocking}
+                className="w-full py-3 px-4 rounded-xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              >
+                {unlocking ? "처리 중..." : `보유 크레딧으로 보기 (잔여 ${remainingCredits}회)`}
+              </button>
+            )}
+            <a
+              href={`/checkout?type=single&resultId=${resultId}`}
+              className="block w-full py-3 px-4 rounded-xl text-sm font-bold bg-slate-900 text-white hover:bg-slate-800 transition-colors"
+            >
+              ₩19,000에 잠금 해제
+            </a>
+            <a
+              href={`/checkout?type=package&resultId=${resultId}`}
+              className="block w-full py-3 px-4 rounded-xl text-xs font-semibold text-indigo-600 hover:underline"
+            >
+              월 2회 패키지로 구매하기 (₩35,000)
+            </a>
+          </div>
         </div>
       </div>
     );
