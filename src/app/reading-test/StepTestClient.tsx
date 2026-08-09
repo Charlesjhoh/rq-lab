@@ -22,43 +22,110 @@ import {
   Rocket,
 } from "lucide-react";
 
-/* ---------------- AR 계산 ---------------- */
+/* ---------------- AR 계산 ----------------
+ * 지문 자체의 난이도(passages.ar_min/ar_max)를 기준점으로 삼고, 정확도/이해도로
+ * "독립(independent)/학습(instructional)/좌절(frustration)" 수준을 판정해 그 근방으로
+ * 배치한다 (Betts' Reading Levels 기준 응용). WPM은 레벨을 정하는 값이 아니라
+ * "이 레벨에서 정상적인 속도로 읽었는가"를 걸러내는 유창성 게이트로만 쓰인다.
+ */
 
-const calculateBaseAR = (wpm: number) => {
-  const capped = Math.min(wpm, 180);
-  if (capped <= 60) return 1.0;
-  if (capped <= 80) return 1.0 + (capped - 60) / 20;
-  if (capped <= 120) return 2.0 + (capped - 80) / 40;
-  if (capped <= 150) return 3.0 + (capped - 120) / 30;
-  return 4.0 + ((capped - 150) / 30) * 0.9;
-};
+const BELOW_MARGIN = 0.6;
 
-function getComprehensionPenalty(score: number) {
-  if (score >= 80) return 0;
-  if (score >= 70) return 0.4;
-  if (score >= 60) return 0.8;
-  return 1.2;
+// wpm↔AR 벤치마크 곡선의 앵커 포인트 (양방향 조회에 재사용)
+const WPM_AR_POINTS: [number, number][] = [
+  [10, 0.8],
+  [20, 1.0],
+  [30, 1.2],
+  [40, 1.5],
+  [60, 1.8],
+  [80, 2.0],
+  [120, 3.0],
+  [150, 4.0],
+  [180, 5.0],
+];
+
+// 레벨별 "정상 속도" 벤치마크 (AR → wpm) — 유창성 게이트에 사용
+function expectedWpmForAR(ar: number) {
+  if (ar <= WPM_AR_POINTS[0][1]) return WPM_AR_POINTS[0][0];
+  if (ar >= WPM_AR_POINTS[WPM_AR_POINTS.length - 1][1]) return WPM_AR_POINTS[WPM_AR_POINTS.length - 1][0];
+
+  for (let i = 0; i < WPM_AR_POINTS.length - 1; i++) {
+    const [wpm0, ar0] = WPM_AR_POINTS[i];
+    const [wpm1, ar1] = WPM_AR_POINTS[i + 1];
+    if (ar >= ar0 && ar <= ar1) {
+      return wpm0 + ((ar - ar0) / (ar1 - ar0)) * (wpm1 - wpm0);
+    }
+  }
+  return WPM_AR_POINTS[WPM_AR_POINTS.length - 1][0];
 }
 
-function getBaseAR(wpm: number) {
-  if (wpm <= 10) return 0.8;
-  if (wpm <= 20) return 0.8 + ((wpm - 10) / 10) * (1.0 - 0.8);
-  if (wpm <= 30) return 1.0 + ((wpm - 20) / 10) * (1.2 - 1.0);
-  if (wpm <= 40) return 1.2 + ((wpm - 30) / 10) * (1.5 - 1.2);
-  if (wpm <= 60) return 1.5 + ((wpm - 40) / 20) * (1.8 - 1.5);
-  if (wpm <= 80) return 1.8 + ((wpm - 60) / 20) * (2.0 - 1.8);
-  if (wpm <= 120) return 2.0 + ((wpm - 80) / 40) * 1.0;
-  if (wpm <= 150) return 3.0 + ((wpm - 120) / 30) * 1.0;
-  if (wpm <= 180) return 4.0 + ((wpm - 150) / 30) * 1.0;
-  return 5.0;
+// "속도만 봤을 때 시사되는 레벨" (wpm → AR) — 독립(숙달) 판정에서 상단 목표치로 사용.
+// 지문 기준을 대체하는 게 아니라, 속도가 지문 수준을 얼마나 압도했는지의 척도로만 쓰인다.
+function wpmIndicatedAR(wpm: number) {
+  const capped = Math.min(wpm, WPM_AR_POINTS[WPM_AR_POINTS.length - 1][0]);
+  if (capped <= WPM_AR_POINTS[0][0]) return WPM_AR_POINTS[0][1];
+
+  for (let i = 0; i < WPM_AR_POINTS.length - 1; i++) {
+    const [wpm0, ar0] = WPM_AR_POINTS[i];
+    const [wpm1, ar1] = WPM_AR_POINTS[i + 1];
+    if (capped >= wpm0 && capped <= wpm1) {
+      return ar0 + ((capped - wpm0) / (wpm1 - wpm0)) * (ar1 - ar0);
+    }
+  }
+  return WPM_AR_POINTS[WPM_AR_POINTS.length - 1][1];
 }
 
-const getAccuracyPenalty = (accuracy: number) => {
-  if (accuracy >= 85) return 0;
-  if (accuracy >= 80) return 0.1;
-  if (accuracy >= 75) return 0.2;
-  return 0.3;
-};
+const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+
+type ReadingLevel = "frustration" | "instructional" | "independent";
+
+function calculateFinalAR(
+  arMin: number,
+  arMax: number,
+  wpm: number,
+  accuracy: number,
+  comprehension: number
+): { finalAR: number; level: ReadingLevel } {
+  const bandWidth = arMax - arMin;
+  let baseAR: number;
+  let level: ReadingLevel;
+
+  if (accuracy < 90 || comprehension < 50) {
+    // 좌절 구간: 더 심각하게 미달인 지표를 기준으로 ar_min 아래로
+    const accuracyDeficit = Math.max(0, (90 - accuracy) / 90);
+    const comprehensionDeficit = Math.max(0, (50 - comprehension) / 50);
+    const deficit = Math.max(accuracyDeficit, comprehensionDeficit);
+    baseAR = arMin - deficit * BELOW_MARGIN;
+    level = "frustration";
+  } else if (accuracy >= 95 && comprehension >= 70) {
+    // 숙달 구간: 속도가 이 지문의 ar_max를 얼마나 압도했는지를 그대로 목표치로 반영.
+    // (고정폭 마진이 아니라 실제 wpm이 시사하는 레벨까지 비례해서 올라감)
+    const speedAR = wpmIndicatedAR(wpm);
+    const target = Math.max(arMax, speedAR);
+    // comprehension이 70~90 사이면 목표치를 부분 신뢰(70→0.5, 90→1.0), 90 이상이면 전액 신뢰
+    const trust = comprehension >= 90 ? 1 : 0.5 + 0.5 * clamp01((comprehension - 70) / 20);
+    baseAR = arMax + (target - arMax) * trust;
+    level = "independent";
+  } else {
+    // 학습 구간: accuracy 90~95%, comprehension 50~90% 사이 위치를 정규화해서 평균
+    const accuracyT = clamp01((accuracy - 90) / 5);
+    const comprehensionT = clamp01((comprehension - 50) / 40);
+    const t = (accuracyT + comprehensionT) / 2;
+    baseAR = arMin + t * bandWidth;
+    level = "instructional";
+  }
+
+  // 유창성 게이트: 이 레벨 기준 예상 WPM의 절반도 안 되면(디코딩 자체가 버거움)
+  // accuracy/comprehension이 어쩌다 괜찮게 나왔어도 ar_min을 못 넘게 캡하고,
+  // "독립(숙달)" 판정은 무효화한다(속도가 뒷받침되지 않는 숙달은 인정하지 않음).
+  const expectedWpm = expectedWpmForAR((arMin + arMax) / 2);
+  if (wpm / expectedWpm < 0.5) {
+    baseAR = Math.min(baseAR, arMin);
+    if (level === "independent") level = "instructional";
+  }
+
+  return { finalAR: Math.max(0.5, Math.min(5.0, baseAR)), level };
+}
 
 const generateParentComment = (
   wpm: number,
@@ -380,12 +447,12 @@ export default function StepTestClient({
     const comprehensionScore = Math.min(100, Math.round(finalScore));
 
     // ---------------- AR 및 최종 지표 계산 ----------------
-    const baseAR = getBaseAR(wpm);
-    let finalAR =
-      baseAR -
-      getAccuracyPenalty(accuracy) -
-      getComprehensionPenalty(comprehensionScore);
-    finalAR = Math.max(0.5, Math.min(5.0, finalAR));
+    // 지문 자체의 난이도(ar_min/ar_max)가 없는 예외 케이스 방어: 선택한 목표 레벨 ±0.5로 대체
+    const fallbackCenter = selectedLevel ? parseFloat(selectedLevel) : 1.0;
+    const arMin = passage.ar_min ?? fallbackCenter - 0.5;
+    const arMax = passage.ar_max ?? fallbackCenter + 0.5;
+
+    const { finalAR, level: readingLevel } = calculateFinalAR(arMin, arMax, wpm, accuracy, comprehensionScore);
 
     let minCoverage = 0.3;
     if (finalAR < 2) minCoverage = 0.2;
@@ -447,14 +514,17 @@ export default function StepTestClient({
       }).catch((err) => console.error("크레딧 자동 소진 실패:", err));
     }
 
+    // 승급 판정도 AR 계산과 같은 기준(독립/숙달 수준 도달)을 재사용해 일관성 유지
     let levelUp: "AR2" | "AR3" | null = null;
-    if (currentLevel === "AR1" && safeWpm >= 80 && safeAccuracy >= 85) levelUp = "AR2";
-    if (currentLevel === "AR2" && safeWpm >= 120 && safeAccuracy >= 90) levelUp = "AR3";
+    if (readingLevel === "independent") {
+      if (currentLevel === "AR1") levelUp = "AR2";
+      else if (currentLevel === "AR2") levelUp = "AR3";
+    }
 
     setRecallPhase("idle");
     setFinalResult({
-      baseAR,
       final_ar: finalAR,
+      reading_level: readingLevel,
       wpm: safeWpm,
       accuracy: safeAccuracy,
       pronunciationAccuracy,
