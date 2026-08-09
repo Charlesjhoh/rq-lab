@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { PRODUCT_LABELS } from "@/lib/products";
+import JoinClassForm from "./JoinClassForm";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,7 @@ export default async function MyPage() {
     redirect("/login");
   }
 
-  const [{ data: orders }, { data: packages }] = await Promise.all([
+  const [{ data: orders }, { data: packages }, { data: profile }] = await Promise.all([
     supabaseAdmin
       .from("orders")
       .select("*")
@@ -62,6 +63,11 @@ export default async function MyPage() {
       .eq("user_id", user.id)
       .gt("expires_at", new Date().toISOString())
       .order("expires_at", { ascending: true }),
+    supabaseAdmin
+      .from("profiles")
+      .select("role, class_id")
+      .eq("id", user.id)
+      .maybeSingle(),
   ]);
 
   const totalRemaining = (packages || []).reduce((sum, p) => sum + p.remaining_credits, 0);
@@ -70,6 +76,10 @@ export default async function MyPage() {
   return (
     <div className="max-w-2xl mx-auto my-12 px-4 space-y-8">
       <h1 className="text-2xl font-bold text-gray-800">마이페이지</h1>
+
+      {profile?.role === "student" && (
+        <JoinClassForm alreadyJoined={Boolean(profile.class_id)} />
+      )}
 
       {/* 패키지 현황 */}
       <section className="bg-white shadow-md rounded-xl p-6">

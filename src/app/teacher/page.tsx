@@ -81,6 +81,7 @@ export default function TeacherPage() {
   const [results, setResults] = useState<ReadingResult[]>([]);
   const [keyword, setKeyword] = useState("");
   const [credits, setCredits] = useState<{ remaining: number; nearestExpiry: string | null } | null>(null);
+  const [currentTeacher, setCurrentTeacher] = useState<{ displayName: string | null; email: string | null; role: string } | null>(null);
 
   // 정적 페이지 프리렌더링 시 레이아웃 붕괴 및 경고를 원천 차단하기 위한 마운트 가드
   const [isMounted, setIsMounted] = useState(false);
@@ -104,7 +105,7 @@ export default function TeacherPage() {
         // profiles 테이블에서 로그인한 유저의 role을 바로 확인
         const { data: profileData, error: dbError } = await supabase
           .from("profiles")
-          .select("role")
+          .select("role, display_name, email")
           .eq("id", user.id)
           .single();
 
@@ -113,6 +114,12 @@ export default function TeacherPage() {
           router.push("/");
           return;
         }
+
+        setCurrentTeacher({
+          displayName: profileData.display_name,
+          email: profileData.email || user.email || null,
+          role: profileData.role,
+        });
 
         await Promise.all([loadStudents(), loadAllResults()]);
       } catch (err) {
@@ -284,6 +291,18 @@ export default function TeacherPage() {
           <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
             학생 리딩 현황
           </h1>
+          {currentTeacher && (
+            <p className="mt-1 text-sm text-slate-500">
+              {currentTeacher.role === "manager" ? "매니저" : "선생님"}{" "}
+              <span className="font-medium text-slate-700">
+                {currentTeacher.displayName || currentTeacher.email || "이름 없음"}
+              </span>
+              {" "}로 로그인됨
+              {currentTeacher.displayName && currentTeacher.email && (
+                <span className="text-slate-400"> · {currentTeacher.email}</span>
+              )}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-6 lg:flex-row">

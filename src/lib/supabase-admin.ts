@@ -25,5 +25,5 @@ export async function requireRole(authHeader: string | null, allowedRoles: strin
     return { error: '접근 권한이 없습니다.', status: 403 as const };
   }
 
-  return { user };
+  return { user, role: profile.role as string };
 }

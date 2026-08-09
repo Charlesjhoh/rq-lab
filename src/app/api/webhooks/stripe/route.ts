@@ -82,5 +82,93 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // 2. 선생님 좌석 구독: 최초 결제 완료
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as Stripe.Checkout.Session;
+
+    if (session.mode === 'subscription' && session.subscription) {
+      const teacherId = session.metadata?.teacherId;
+
+      try {
+        const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+        await upsertTeacherSubscription(subscription, teacherId);
+      } catch (dbErr) {
+        console.error('❌ 구독 checkout.session.completed 처리 중 오류:', dbErr);
+        return NextResponse.json({ error: 'DB 처리 오류' }, { status: 500 });
+      }
+    }
+  }
+
+  // 3. 선생님 좌석 구독: 좌석 수/상태 변경 (매 결제 주기 갱신, 좌석 수량 변경 포함)
+  if (event.type === 'customer.subscription.updated') {
+    const subscription = event.data.object as Stripe.Subscription;
+
+    try {
+      await upsertTeacherSubscription(subscription, subscription.metadata?.teacherId);
+    } catch (dbErr) {
+      console.error('❌ 구독 customer.subscription.updated 처리 중 오류:', dbErr);
+      return NextResponse.json({ error: 'DB 처리 오류' }, { status: 500 });
+    }
+  }
+
+  // 4. 선생님 좌석 구독: 해지 완료 — 기존 학생의 class_id는 건드리지 않음 (강제 탈퇴는 스코프 밖)
+  if (event.type === 'customer.subscription.deleted') {
+    const subscription = event.data.object as Stripe.Subscription;
+
+    try {
+      const { error } = await supabaseAdmin
+        .from('teacher_subscriptions')
+        .update({ status: 'canceled', seat_count: 0, updated_at: new Date().toISOString() })
+        .eq('stripe_subscription_id', subscription.id);
+
+      if (error) throw error;
+    } catch (dbErr) {
+      console.error('❌ 구독 customer.subscription.deleted 처리 중 오류:', dbErr);
+      return NextResponse.json({ error: 'DB 처리 오류' }, { status: 500 });
+    }
+  }
+
   return NextResponse.json({ received: true }, { status: 200 });
+}
+
+async function upsertTeacherSubscription(subscription: Stripe.Subscription, teacherIdHint?: string) {
+  let teacherId = teacherIdHint;
+
+  if (!teacherId) {
+    const { data: existing } = await supabaseAdmin
+      .from('teacher_subscriptions')
+      .select('teacher_id')
+      .eq('stripe_subscription_id', subscription.id)
+      .maybeSingle();
+    teacherId = existing?.teacher_id;
+  }
+
+  if (!teacherId) {
+    console.error('❌ 구독 웹훅: teacherId를 찾을 수 없음', subscription.id);
+    return;
+  }
+
+  const item = subscription.items.data[0];
+
+  // 💡 Stripe API 2025-03-31 이후 current_period_end가 Subscription에서
+  // SubscriptionItem으로 이동함. 계정/webhook의 API 버전에 따라 이벤트 payload
+  // 모양이 다를 수 있어 두 위치 모두 확인해서 안전하게 읽는다.
+  const periodEndUnix = (subscription as any).current_period_end ?? (item as any)?.current_period_end;
+
+  const { error } = await supabaseAdmin.from('teacher_subscriptions').upsert(
+    {
+      teacher_id: teacherId,
+      stripe_customer_id: subscription.customer as string,
+      stripe_subscription_id: subscription.id,
+      stripe_price_id: item?.price.id,
+      seat_count: item?.quantity || 0,
+      status: subscription.status,
+      current_period_end: periodEndUnix ? new Date(periodEndUnix * 1000).toISOString() : null,
+      cancel_at_period_end: subscription.cancel_at_period_end,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'teacher_id' }
+  );
+
+  if (error) throw error;
 }

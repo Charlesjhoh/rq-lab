@@ -1,13 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase-client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { BookOpen, Mail, KeyRound, ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
 
-export default function LoginPage() {
+function LoginPageInner() {
   const [email, setEmail] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const asTeacher = searchParams.get("as") === "teacher";
+  const onboardingHref = asTeacher ? "/onboarding?as=teacher" : "/onboarding";
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState<"email" | "otp">("email");
 
@@ -17,12 +21,12 @@ export default function LoginPage() {
 
       if (data.session?.user) {
         // 이미 로그인 상태면 정보를 확인/입력할 수 있는 폼 페이지로 이동
-        router.replace("/onboarding"); // (프로젝트 구조에 따라 "/" 또는 "/onboarding")
+        router.replace(onboardingHref);
       }
     };
 
     checkSession();
-  }, [router]);
+  }, [router, onboardingHref]);
 
   const handleLogin = async () => {
     const { error } = await supabase.auth.signInWithOtp({
@@ -62,7 +66,7 @@ export default function LoginPage() {
     }
 
     // 로그인 완료 후 폼 화면으로 이동
-    router.replace("/onboarding");
+    router.replace(onboardingHref);
   };
 
   return (
@@ -140,6 +144,13 @@ export default function LoginPage() {
                 인증번호 받기
                 <ArrowRight className="h-4 w-4" aria-hidden={true} />
               </button>
+
+              <Link
+                href={asTeacher ? "/login" : "/login?as=teacher"}
+                className="block text-center text-xs font-medium text-slate-400 transition-colors hover:text-slate-600"
+              >
+                {asTeacher ? "학생/학부모이신가요? 학생으로 가입" : "선생님이신가요? 선생님으로 가입"}
+              </Link>
             </div>
           ) : (
             <div className="space-y-5">
@@ -185,5 +196,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-50" />}>
+      <LoginPageInner />
+    </Suspense>
   );
 }

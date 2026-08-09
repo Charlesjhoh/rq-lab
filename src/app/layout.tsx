@@ -4,7 +4,7 @@ import "./globals.css";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import { useEffect, useState } from "react";
-import { BookOpen, FileText, LogOut, LogIn, Wallet, Users, BarChart3 } from "lucide-react";
+import { BookOpen, FileText, LogOut, LogIn, Wallet, Users, BarChart3, School } from "lucide-react";
 
 export default function RootLayout({
   children,
@@ -108,6 +108,16 @@ useEffect(() => {
                 >
                   <Users className="h-4 w-4" aria-hidden={true} />
                   선생님
+                </button>
+              )}
+
+              {role === "teacher" && (
+                <button
+                  onClick={() => router.push("/teacher/classes")}
+                  className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                >
+                  <School className="h-4 w-4" aria-hidden={true} />
+                  클래스 관리
                 </button>
               )}
 

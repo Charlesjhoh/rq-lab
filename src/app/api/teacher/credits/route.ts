@@ -15,6 +15,25 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
+    if (auth.role === 'teacher') {
+      const { data: classes } = await supabaseAdmin
+        .from('classes')
+        .select('id')
+        .eq('teacher_id', auth.user.id);
+
+      const classIds = (classes || []).map((c) => c.id);
+      const { data: student } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .in('class_id', classIds.length > 0 ? classIds : ['00000000-0000-0000-0000-000000000000'])
+        .maybeSingle();
+
+      if (!student) {
+        return NextResponse.json({ error: '접근 권한이 없습니다.' }, { status: 403 });
+      }
+    }
+
     const { data: packages, error } = await supabaseAdmin
       .from('credit_packages')
       .select('remaining_credits, expires_at')
