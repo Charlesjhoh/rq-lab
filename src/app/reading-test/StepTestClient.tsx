@@ -79,6 +79,21 @@ const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 type ReadingLevel = "frustration" | "instructional" | "independent";
 
+// "AR1"~"AR4" 표기 <-> 레벨 선택 화면의 selectedLevel 값("1.0"~"4.0") 상호 변환용
+const LEVEL_TO_SELECT_VALUE: Record<"AR1" | "AR2" | "AR3" | "AR4", string> = {
+  AR1: "1.0",
+  AR2: "2.0",
+  AR3: "3.0",
+  AR4: "4.0",
+};
+
+const LEVEL_OPTIONS = [
+  { value: "1.0", label: "AR 1.0", desc: "입문 단계" },
+  { value: "2.0", label: "AR 2.0", desc: "기초 단계" },
+  { value: "3.0", label: "AR 3.0", desc: "발전 단계" },
+  { value: "4.0", label: "AR 4.0", desc: "심화 단계" },
+];
+
 function calculateFinalAR(
   arMin: number,
   arMax: number,
@@ -96,6 +111,16 @@ function calculateFinalAR(
     const comprehensionDeficit = Math.max(0, (50 - comprehension) / 50);
     const deficit = Math.max(accuracyDeficit, comprehensionDeficit);
     baseAR = arMin - deficit * BELOW_MARGIN;
+
+    // BELOW_MARGIN(0.6)은 accuracy/comprehension만으로는 arMin 아래로 그만큼만 내려가는
+    // 고정폭이라, WPM이 극단적으로 낮은 경우(디코딩 자체가 안 되는 수준)를 못 담는다.
+    // "독립" 구간에서 속도 초과분을 그대로 목표치로 반영한 것과 대칭되게, 속도가 시사하는
+    // 레벨이 이보다 더 낮으면 그 값을 그대로 반영한다.
+    const speedAR = wpmIndicatedAR(wpm);
+    if (speedAR < baseAR) {
+      baseAR = speedAR;
+    }
+
     level = "frustration";
   } else if (accuracy >= 95 && comprehension >= 70) {
     // 숙달 구간: 속도가 이 지문의 ar_max를 얼마나 압도했는지를 그대로 목표치로 반영.
@@ -175,7 +200,6 @@ export default function StepTestClient({
   const [phase, setPhase] = useState<Phase>("ready");
   const [recallPhase, setRecallPhase] = useState<RecallPhase>("idle");
   const [countdown, setCountdown] = useState(7);
-  const [currentLevel, setCurrentLevel] = useState<"AR1" | "AR2" | "AR3">("AR1");
 
   const [passage, setPassage] = useState<any>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -185,55 +209,121 @@ export default function StepTestClient({
   const recallRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recallChunksRef = useRef<Blob[]>([]);
+  const readingStartRef = useRef<number | null>(null);
+  const readingDurationSecRef = useRef<number | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [lastPassageId, setLastPassageId] = useState<number | null>(null);
+  const [passageReloadKey, setPassageReloadKey] = useState(0);
+  // null = 아직 확인 전, 이 값이 나오기 전까지는 막힌 걸로 단정하지 않는다(최종 관문은
+  // 어차피 /api/pronun 쪽 서버 체크). 레벨/지문을 고르기도 전, 화면 진입 시점에 미리
+  // 확인해서 다 읽고 녹음까지 마친 뒤에야 "오늘 다 썼습니다"라고 뜨는 걸 막는다.
+  const [eligibility, setEligibility] = useState<{ allowed: boolean; reason?: string } | null>(null);
 
   useEffect(() => {
     if (!level) return;
     if (level === "ar2") setSelectedLevel("2.0");
     else if (level === "ar3") setSelectedLevel("3.0");
+    else if (level === "ar4") setSelectedLevel("4.0");
   }, [level]);
+
+  useEffect(() => {
+    // ready 화면에 들어올 때마다 다시 확인한다. 마운트 시 1회만 체크하면, 결과 화면의
+    // "OO 테스트 하기" 버튼으로 페이지 새로고침 없이 연달아 재도전할 때 맨 처음(아직 0회)
+    // 체크한 값이 계속 남아있어서 — 이미 오늘 3회를 다 채운 뒤에도 계속 통과돼버렸다.
+    if (phase !== "ready") return;
+
+    let active = true;
+
+    const runCheck = async (accessToken: string) => {
+      try {
+        const res = await fetch("/api/reading-test/check-eligibility", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const result = await res.json();
+        if (active) setEligibility(result);
+      } catch {
+        // 확인 자체가 실패해도 진행은 막지 않는다 — 실제 제출 시점의 서버 체크가 최종 관문
+        if (active) setEligibility({ allowed: true });
+      }
+    };
+
+    // getSession()을 컴포넌트 마운트 시점에 한 번만 부르면, 페이지를 직접 새로고침했을 때
+    // Supabase 클라이언트가 로컬스토리지에서 세션을 아직 복원하기 전이라 토큰이 비어있는
+    // 경우가 있었다(그러면 그냥 조용히 통과되어 버림). onAuthStateChange로 세션이 실제로
+    // 준비되는 시점을 놓치지 않고 잡는다.
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.access_token) runCheck(data.session.access_token);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.access_token) runCheck(session.access_token);
+    });
+
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
+  }, [phase]);
 
   useEffect(() => {
     const loadPassage = async () => {
       if (!selectedLevel || !user?.id) return;
       const lvl = parseFloat(selectedLevel);
 
-      // 1. 유저가 이미 풀어본 지문(passage) 목록을 DB에서 가져옴
+      // 1. 유저가 이미 풀어본 지문(passage) 이력 — 지문(content)별 "가장 최근에 푼 시각"까지
+      // 확보한다. 다 풀어본 뒤 매번 전체에서 순수 무작위로 재추첨하면 후보 수가 적을 때 같은
+      // 지문이 연달아 몰리기 쉬웠다 — 고갈 후에는 가장 오래전에 푼 지문부터 순환하도록 한다.
       const { data: userHistory } = await supabase
         .from("reading_results")
-        .select("reference_text")
-        .eq("user_id", user.id);
+        .select("reference_text, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
 
-      const readTexts = userHistory?.map((h) => h.reference_text).filter(Boolean) || [];
+      const lastReadAt = new Map<string, string>();
+      (userHistory || []).forEach((h) => {
+        if (h.reference_text) lastReadAt.set(h.reference_text, h.created_at);
+      });
 
-      // 2. 해당 레벨의 전체 지문 조회
+      // 2. 해당 레벨 근방(±0.5)과 난이도 밴드가 겹치는 지문 조회.
+      // 지문마다 [ar_min, ar_max]가 0.4 폭으로 촘촘히(0.1 간격) 깔려 있어서, 선택 레벨
+      // 정확히 그 점을 관통하는 지문만 보면(예전 조건) 같은 레벨로 등록된 지문 대부분이
+      // 후보에서 빠지고 몇 개만 남아 반복 노출되는 문제가 있었다. ±0.5 범위로 겹치는
+      // 지문 전체를 후보로 넓힌다.
+      const LEVEL_RANGE = 0.5;
       const { data: allPassages } = await supabase
         .from("passages")
         .select("*")
-        .gte("ar_max", lvl)
-        .lte("ar_min", lvl);
+        .gte("ar_max", lvl - LEVEL_RANGE)
+        .lte("ar_min", lvl + LEVEL_RANGE);
 
       if (allPassages && allPassages.length > 0) {
-        // 3. 이미 풀어본 지문(content 기준)을 제외한 신규 지문만 필터링
-        let unreadPassages = allPassages.filter(
-          (p) => !readTexts.includes(p.content)
-        );
+        // 3. 이미 풀어본 지문(content 기준)을 제외한 신규 지문만 우선 후보로
+        let candidates = allPassages.filter((p) => !lastReadAt.has(p.content));
 
-        // 4. 만약 안 풀어본 지문이 없으면(지문 고갈 시) 전체 지문 중 랜덤으로 예외 처리(Fallback)
-        if (unreadPassages.length === 0) {
-          unreadPassages = allPassages;
+        // 4. 안 풀어본 지문이 없으면(지문 고갈) 가장 오래전에 푼 지문(들)부터 재활용
+        if (candidates.length === 0) {
+          const sorted = [...allPassages].sort((a, b) =>
+            (lastReadAt.get(a.content) || "").localeCompare(lastReadAt.get(b.content) || "")
+          );
+          const oldest = lastReadAt.get(sorted[0].content) || "";
+          candidates = sorted.filter((p) => (lastReadAt.get(p.content) || "") === oldest);
         }
 
-        // 5. 최종 후보 중 1개 랜덤 추출
-        const random = unreadPassages[Math.floor(Math.random() * unreadPassages.length)];
+        // 5. 후보가 여럿이면 바로 직전에 낸 지문과 연달아 겹치지 않게 제외
+        if (candidates.length > 1 && lastPassageId) {
+          const withoutLast = candidates.filter((p) => p.id !== lastPassageId);
+          if (withoutLast.length > 0) candidates = withoutLast;
+        }
+
+        // 6. 최종 후보 중 1개 랜덤 추출
+        const random = candidates[Math.floor(Math.random() * candidates.length)];
         setPassage(random);
         setLastPassageId(random.id);
       }
     };
 
     loadPassage();
-  }, [selectedLevel, user?.id]);
+  }, [selectedLevel, user?.id, passageReloadKey]);
 
   /* ---------------- 카운트다운 ---------------- */
   useEffect(() => {
@@ -264,6 +354,9 @@ export default function StepTestClient({
         alert("읽기 녹음 실패");
         return;
       }
+      readingDurationSecRef.current = readingStartRef.current
+        ? Math.max(1, (Date.now() - readingStartRef.current) / 1000)
+        : null;
       const blob = new Blob(chunks, { type: "audio/webm" });
       setAudioBlob(blob);
       stream.getTracks().forEach((t) => t.stop());
@@ -272,6 +365,7 @@ export default function StepTestClient({
 
     recorder.start(100);
     mediaRecorderRef.current = recorder;
+    readingStartRef.current = Date.now();
 
     setTimeout(() => {
       if (mediaRecorderRef.current?.state === "recording") {
@@ -361,18 +455,29 @@ export default function StepTestClient({
 
     const pronunRes = await fetch("/api/pronun", {
       method: "POST",
+      headers: sessionData.session?.access_token
+        ? { Authorization: `Bearer ${sessionData.session.access_token}` }
+        : undefined,
       body: formData,
     });
 
     if (!pronunRes.ok) {
-      alert("발음 분석 실패");
+      const errData = await pronunRes.json().catch(() => ({}));
+      alert(errData.error || "발음 분석 실패");
       return;
     }
 
     const pronunData = await pronunRes.json();
-    const durationSec = Math.max(1, pronunData.durationSec || 1);
+    // 서버 durationSec은 Azure가 인식한 발화 구간 길이만 합산해서, 단어 사이 의도적인
+    // 정적/쉬는 시간이 통째로 빠져 WPM이 부풀려진다. 녹음 시작~종료 실제 경과 시간(클라이언트
+    // wall-clock)을 우선 쓰고, 어떤 이유로든 못 구했을 때만 서버 값으로 대체한다.
+    const durationSec = Math.max(1, readingDurationSecRef.current ?? pronunData.durationSec ?? 1);
     const recognizedText = pronunData.recognizedText || "";
+    // wrongWords는 못다 읽은 뒷부분까지 포함된 전체 목록 — 점수(WPM/커버리지/정확도) 계산에는
+    // 이 값을 그대로 써야 안 읽은 만큼 정확히 감점된다. missedWords는 "실제로 시도했지만 놓친
+    // 단어"만 담긴 화면 표시용 목록 — 안 읽은 뒷부분이 통째로 "놓친 단어"로 뜨는 문제 방지.
     const wrongWords = pronunData.wrongWords || [];
+    const missedWords = pronunData.missedWords || [];
     const badPronunciations = pronunData.badPronunciations || [];
 
     // 🔥 [보정 1]: 실제 일치 단어 수 기반의 정밀 WPM 산출
@@ -486,6 +591,7 @@ export default function StepTestClient({
           accuracy: safeAccuracy,
           comprehension: comprehensionScore,
           final_ar: finalAR,
+          reading_level: readingLevel,
           duration_sec: durationSec,
           spoken_words: correctWordCount,
           total_words: originalWordCount,
@@ -493,7 +599,7 @@ export default function StepTestClient({
           recognized_text: recognizedText,
           reference_text: refText,
           bad_pronunciations: badPronunciations,
-          wrong_words: wrongWords,
+          wrong_words: missedWords,
           ai_score: compData.score ?? 0,
           ai_comment: compData.summary ?? "분석 결과 없음",
           recall_text: recallText,
@@ -514,17 +620,43 @@ export default function StepTestClient({
       }).catch((err) => console.error("크레딧 자동 소진 실패:", err));
     }
 
-    // 승급 판정도 AR 계산과 같은 기준(독립/숙달 수준 도달)을 재사용해 일관성 유지
-    let levelUp: "AR2" | "AR3" | null = null;
-    if (readingLevel === "independent") {
-      if (currentLevel === "AR1") levelUp = "AR2";
-      else if (currentLevel === "AR2") levelUp = "AR3";
+    // currentLevel은 승급/강등 버튼을 눌러야만 갱신되고 레벨 선택 화면에서 직접 고른
+    // selectedLevel과는 따로 놀아서(예: 처음부터 AR3을 선택해도 currentLevel은 AR1인 채로
+    // 남음) 실제로 이번에 테스트한 레벨은 selectedLevel에서 바로 구한다.
+    const testedLevel: "AR1" | "AR2" | "AR3" | "AR4" =
+      selectedLevel === "4.0"
+        ? "AR4"
+        : selectedLevel === "3.0"
+        ? "AR3"
+        : selectedLevel === "2.0"
+        ? "AR2"
+        : "AR1";
+
+    // 승급 판정: "독립" 판정 자체는 comprehension 70만 넘어도 뜨지만(AR 점수 계산용 완화 기준),
+    // "다음 레벨 통째로 넘어가라"는 권유는 그보다 더 확실한 신호가 필요하다. comprehension이
+    // 70~85 사이의 턱걸이 독립 판정(예: 75%)까지 승급을 권하면 성급하게 느껴질 수 있어서,
+    // 승급 권유에는 comprehension 85 이상(더 확실한 이해)을 추가로 요구한다.
+    const confidentlyIndependent = readingLevel === "independent" && comprehensionScore >= 85;
+    let levelUp: "AR2" | "AR3" | "AR4" | null = null;
+    if (confidentlyIndependent) {
+      if (testedLevel === "AR1") levelUp = "AR2";
+      else if (testedLevel === "AR2") levelUp = "AR3";
+      else if (testedLevel === "AR3") levelUp = "AR4";
+    }
+
+    // 좌절(frustration) 판정 시 한 단계 낮은 레벨을 권장 (AR1은 최저 단계라 내려갈 곳이 없음)
+    let levelDown: "AR1" | "AR2" | "AR3" | null = null;
+    if (readingLevel === "frustration") {
+      if (testedLevel === "AR4") levelDown = "AR3";
+      else if (testedLevel === "AR3") levelDown = "AR2";
+      else if (testedLevel === "AR2") levelDown = "AR1";
     }
 
     setRecallPhase("idle");
     setFinalResult({
       final_ar: finalAR,
       reading_level: readingLevel,
+      levelDown,
       wpm: safeWpm,
       accuracy: safeAccuracy,
       pronunciationAccuracy,
@@ -534,7 +666,7 @@ export default function StepTestClient({
       originalWordCount,
       readingCoverage,
       ai_comment: compData.summary,
-      wrong_words: wrongWords,
+      wrong_words: missedWords,
       badPronunciations: badPronunciations,
       levelUp,
     });
@@ -547,7 +679,22 @@ export default function StepTestClient({
     <div className="min-h-screen w-full bg-slate-50 px-4 py-10 sm:py-14">
       <div className="mx-auto w-full max-w-3xl">
         {/* READY */}
-        {phase === "ready" && (
+        {phase === "ready" && eligibility && !eligibility.allowed && (
+          <div className="overflow-hidden rounded-3xl border border-orange-200 bg-white shadow-sm">
+            <div className="bg-gradient-to-br from-orange-600 to-orange-500 px-6 py-8 sm:px-10 sm:py-10">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-orange-100">
+                <AlertCircle className="h-4 w-4" aria-hidden={true} />
+                Reading Assessment
+              </div>
+              <h2 className="mt-3 text-2xl font-semibold text-white sm:text-3xl text-balance">
+                지금은 테스트를 시작할 수 없어요
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-orange-50">{eligibility.reason}</p>
+            </div>
+          </div>
+        )}
+
+        {phase === "ready" && (!eligibility || eligibility.allowed) && (
           <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 px-6 py-8 sm:px-10 sm:py-10">
               <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-indigo-300">
@@ -563,12 +710,8 @@ export default function StepTestClient({
             </div>
 
             <div className="px-6 py-8 sm:px-10">
-              <div className="grid gap-3 sm:grid-cols-3">
-                {[
-                  { value: "1.0", label: "AR 1.0", desc: "입문 단계" },
-                  { value: "2.0", label: "AR 2.0", desc: "기초 단계" },
-                  { value: "3.0", label: "AR 3.0", desc: "발전 단계" },
-                ].map((opt) => {
+              <div className={`grid gap-3 ${selectedLevel ? "" : "sm:grid-cols-4"}`}>
+                {LEVEL_OPTIONS.filter((opt) => !selectedLevel || opt.value === selectedLevel).map((opt) => {
                   const active = selectedLevel === opt.value;
                   return (
                     <label
@@ -603,6 +746,19 @@ export default function StepTestClient({
                 })}
               </div>
 
+              {selectedLevel && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedLevel(null);
+                    setPassage(null);
+                  }}
+                  className="mt-3 text-sm font-medium text-slate-400 underline-offset-2 transition-colors hover:text-slate-600 hover:underline"
+                >
+                  다른 레벨 선택하기
+                </button>
+              )}
+
               {selectedLevel && !passage && (
                 <p className="mt-5 flex items-center gap-2 text-sm text-slate-500">
                   <Sparkles className="h-4 w-4 animate-pulse text-indigo-500" aria-hidden={true} />
@@ -618,6 +774,13 @@ export default function StepTestClient({
                   }
                   if (!passage) {
                     alert("지문을 불러오는 중입니다");
+                    return;
+                  }
+                  // 화면 진입 시점에 이미 확인해둔 값. 그 사이 다른 탭에서 테스트를 더
+                  // 봤거나 자정을 넘긴 경우를 대비한 마지막 안전장치 — 최종 관문은
+                  // 어차피 /api/pronun 쪽 서버 체크.
+                  if (eligibility && !eligibility.allowed) {
+                    alert(eligibility.reason || "지금은 테스트를 진행할 수 없습니다.");
                     return;
                   }
                   setPhase("countdown");
@@ -810,6 +973,31 @@ export default function StepTestClient({
                     </div>
                   )}
 
+                {finalResult && finalResult.levelUp === "AR4" && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                    <p className="flex items-center gap-2 font-semibold text-amber-900">
+                      <Rocket className="h-5 w-5" aria-hidden={true} />
+                      매우 빠르고 정확하게 읽고 있습니다.
+                    </p>
+                    <p className="mt-1 text-sm leading-relaxed text-amber-800">
+                      이 테스트는 기본 수준 확인용입니다. AR 4.0 단계 테스트를 진행해 보세요.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFinalResult(null);
+                        setCountdown(7);
+                        setSelectedLevel("4.0");
+                        setPhase("ready");
+                      }}
+                      className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
+                    >
+                      AR 4.0 테스트 하기
+                    </button>
+                  </div>
+                )}
+
                 {finalResult && finalResult.levelUp === "AR3" && (
                   <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
                     <p className="flex items-center gap-2 font-semibold text-amber-900">
@@ -823,7 +1011,6 @@ export default function StepTestClient({
                     <button
                       type="button"
                       onClick={() => {
-                        setCurrentLevel("AR3");
                         setFinalResult(null);
                         setCountdown(7);
                         setSelectedLevel("3.0");
@@ -849,7 +1036,6 @@ export default function StepTestClient({
                     <button
                       type="button"
                       onClick={() => {
-                        setCurrentLevel("AR2");
                         setFinalResult(null);
                         setCountdown(7);
                         setSelectedLevel("2.0");
@@ -861,6 +1047,59 @@ export default function StepTestClient({
                     </button>
                   </div>
                 )}
+
+                {finalResult && finalResult.levelDown && (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5">
+                    <p className="flex items-center gap-2 font-semibold text-rose-900">
+                      <AlertCircle className="h-5 w-5" aria-hidden={true} />
+                      이번 지문은 아이에게 조금 어려웠어요.
+                    </p>
+                    <p className="mt-1 text-sm leading-relaxed text-rose-800">
+                      {finalResult.levelDown} 단계 테스트로 다시 도전해 보세요. 눈높이에 맞는 지문으로 자신감을 먼저 쌓는 게 좋아요.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFinalResult(null);
+                        setCountdown(7);
+                        setSelectedLevel(LEVEL_TO_SELECT_VALUE[finalResult.levelDown as "AR1" | "AR2" | "AR3"]);
+                        setPhase("ready");
+                      }}
+                      className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-600"
+                    >
+                      {finalResult.levelDown} 테스트 하기
+                    </button>
+                  </div>
+                )}
+
+                {finalResult &&
+                  finalResult.reading_level === "frustration" &&
+                  !finalResult.levelDown && (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5">
+                      <p className="flex items-center gap-2 font-semibold text-rose-900">
+                        <AlertCircle className="h-5 w-5" aria-hidden={true} />
+                        이번 지문은 아이에게 조금 어려웠어요.
+                      </p>
+                      <p className="mt-1 text-sm leading-relaxed text-rose-800">
+                        같은 레벨의 다른 지문으로 다시 연습해 보세요. 반복하다 보면 자연스럽게 편해집니다.
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFinalResult(null);
+                          setCountdown(7);
+                          setPassage(null);
+                          setPassageReloadKey((k) => k + 1);
+                          setPhase("ready");
+                        }}
+                        className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-rose-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-600"
+                      >
+                        같은 레벨로 다시 도전하기
+                      </button>
+                    </div>
+                  )}
 
                 <div className="border-t border-slate-100 pt-6">
                   <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">

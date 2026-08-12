@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase-client";
 import { BookOpen, User, Users, Calendar, KeyRound, ArrowRight } from "lucide-react";
 
@@ -18,6 +19,8 @@ function OnboardingPageInner() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [existingRole, setExistingRole] = useState<string | null>(null);
+  const [agreed, setAgreed] = useState(false);
+  const [termsAgreedAt, setTermsAgreedAt] = useState<string | null>(null);
 
   // 1. 기존 데이터 불러오기 로직 추가
   useEffect(() => {
@@ -34,7 +37,7 @@ function OnboardingPageInner() {
       // 기존 profiles 데이터 조회
       const { data: profile, error } = await supabase
         .from("profiles")
-        .select("parent_name, student_name, birth, role, display_name")
+        .select("parent_name, student_name, birth, role, display_name, terms_agreed_at")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -53,6 +56,11 @@ function OnboardingPageInner() {
         if (profile.student_name) setStudentName(profile.student_name);
         if (profile.birth) setBirth(profile.birth);
         if (profile.role) setExistingRole(profile.role);
+        // 이미 한 번 동의한 이력이 있으면 다시 체크하도록 강제하지 않음
+        if (profile.terms_agreed_at) {
+          setAgreed(true);
+          setTermsAgreedAt(profile.terms_agreed_at);
+        }
       }
 
       setLoading(false);
@@ -66,9 +74,10 @@ function OnboardingPageInner() {
   const isStudentFormValid =
     parentName.trim() !== "" &&
     studentName.trim() !== "" &&
-    birth.trim() !== "";
+    birth.trim() !== "" &&
+    agreed;
 
-  const isTeacherFormValid = teacherDisplayName.trim() !== "";
+  const isTeacherFormValid = teacherDisplayName.trim() !== "" && agreed;
 
   const joinClassIfNeeded = async (accessToken: string) => {
     if (!joinCode.trim()) return;
@@ -115,6 +124,7 @@ function OnboardingPageInner() {
         role: existingRole || "student",
         birth,
         email: user.email,
+        terms_agreed_at: termsAgreedAt || new Date().toISOString(),
       },
       {
         onConflict: "id",
@@ -154,6 +164,7 @@ function OnboardingPageInner() {
         role: "teacher",
         display_name: teacherDisplayName,
         email: user.email,
+        terms_agreed_at: termsAgreedAt || new Date().toISOString(),
       },
       {
         onConflict: "id",
@@ -169,6 +180,27 @@ function OnboardingPageInner() {
 
     router.push("/teacher/classes");
   };
+
+  const termsCheckbox = (
+    <label className="flex items-start gap-2.5 text-xs leading-relaxed text-slate-500">
+      <input
+        type="checkbox"
+        checked={agreed}
+        onChange={(e) => setAgreed(e.target.checked)}
+        className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-400"
+      />
+      <span>
+        <Link href="/terms" target="_blank" className="font-medium text-slate-700 underline hover:text-slate-900">
+          이용약관
+        </Link>{" "}
+        및{" "}
+        <Link href="/privacy" target="_blank" className="font-medium text-slate-700 underline hover:text-slate-900">
+          개인정보처리방침
+        </Link>
+        에 동의합니다. (필수)
+      </span>
+    </label>
+  );
 
   if (loading) {
     return (
@@ -219,8 +251,14 @@ function OnboardingPageInner() {
               </div>
             </div>
 
+            {termsCheckbox}
+
             {!isTeacherFormValid && (
-              <p className="text-xs text-red-500">표시 이름을 입력해야 계속할 수 있습니다.</p>
+              <p className="text-xs text-red-500">
+                {teacherDisplayName.trim() === ""
+                  ? "표시 이름을 입력해야 계속할 수 있습니다."
+                  : "이용약관 및 개인정보처리방침에 동의해야 계속할 수 있습니다."}
+              </p>
             )}
 
             <button
@@ -304,8 +342,14 @@ function OnboardingPageInner() {
               </p>
             </div>
 
+            {termsCheckbox}
+
             {!isStudentFormValid && (
-              <p className="text-xs text-red-500">모든 정보를 입력해야 테스트를 진행할 수 있습니다.</p>
+              <p className="text-xs text-red-500">
+                {!agreed
+                  ? "이용약관 및 개인정보처리방침에 동의해야 계속할 수 있습니다."
+                  : "모든 정보를 입력해야 테스트를 진행할 수 있습니다."}
+              </p>
             )}
 
             <button

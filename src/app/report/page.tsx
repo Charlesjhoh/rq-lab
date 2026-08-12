@@ -117,6 +117,12 @@ function ClientPart() {
                 </span>
               </div>
 
+              {latest.reading_level === "frustration" && (
+                <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-700">
+                  이번 지문은 아이에게 조금 어려웠어요. 더 쉬운 레벨로 다시 시도해 보세요.
+                </div>
+              )}
+
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-slate-200 p-4">
                   <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -216,6 +222,11 @@ function ClientPart() {
                       <BookOpen className="h-4 w-4 text-indigo-500" aria-hidden={true} />
                       AR {d.final_ar.toFixed(1)}
                     </span>
+                    {d.reading_level === "frustration" && (
+                      <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700">
+                        지문이 어려웠어요
+                      </span>
+                    )}
                     <span className="flex items-center gap-1.5 text-slate-700">
                       <Timer className="h-4 w-4 text-indigo-500" aria-hidden={true} />
                       {Math.round(d.wpm)} WPM

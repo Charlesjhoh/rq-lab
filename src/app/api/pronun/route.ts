@@ -1,11 +1,25 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireUser } from "@/lib/supabase-admin";
+import { checkTestEligibility } from "@/lib/test-eligibility";
 
 export async function POST(req: NextRequest) {
   const SpeechSDK = await import("microsoft-cognitiveservices-speech-sdk");
 
   try {
+    // Azure Speech 호출은 건당 실비용이 든다 — 응시 자격(소속 선생님 구독 상태,
+    // 일일 응시 횟수)을 이 비용 발생 전에 먼저 확인한다.
+    const auth = await requireUser(req.headers.get("Authorization"));
+    if ("error" in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+
+    const eligibility = await checkTestEligibility(auth.user.id);
+    if (!eligibility.allowed) {
+      return NextResponse.json({ error: eligibility.reason }, { status: 403 });
+    }
+
     const formData = await req.formData();
     const file = formData.get("audio") as File;
     const text = formData.get("text") as string;
@@ -72,8 +86,18 @@ export async function POST(req: NextRequest) {
 
               words.forEach((w: any) => {
                 const score = w.PronunciationAssessment?.AccuracyScore;
-                if (typeof score === "number" && score < 60) {
-                  const cleanedWord = w.Word.toLowerCase().replace(/[^a-z]/g, "");
+                const errorType = w.PronunciationAssessment?.ErrorType;
+                // 아주 심하게 뭉개진 발음은 Azure가 점수를 낮게 주는 대신 아예
+                // Mispronunciation/Omission으로만 분류하고 AccuracyScore를 안 채우는
+                // 경우가 있어, 점수 기준만으로는 걸러지지 않고 결과에서 통째로 빠졌었다.
+                // ErrorType도 함께 봐서 그런 케이스를 잡는다.
+                const isBad =
+                  (typeof score === "number" && score < 60) ||
+                  errorType === "Mispronunciation" ||
+                  errorType === "Omission";
+
+                if (isBad) {
+                  const cleanedWord = (w.Word || "").toLowerCase().replace(/[^a-z]/g, "");
                   if (cleanedWord.length > 1) {
                     badPronunciations.push(cleanedWord);
                   }
@@ -114,7 +138,11 @@ export async function POST(req: NextRequest) {
 
     // ---------------- 유연 매칭 알고리즘 (Alignment Fix) ----------------
     let matchCount = 0;
+    // wrongWords: 커버리지/정확도 계산용 — 못다 읽은 뒷부분까지 전부 포함해야 점수가 정확히
+    // 깎이므로 기존 그대로 둔다. missedWords: 화면 표시용 — "시도했지만 놓친 단어"만 담아서,
+    // 녹음이 도중에 끝나 통째로 남은 뒷부분이 전부 "놓친 단어"로 뜨는 문제를 피한다.
     const wrongWords: string[] = [];
+    const missedWords: string[] = [];
     let j = 0;
 
     // Window 크기를 12로 확장하여 단어 생략/추가 시에도 매칭 위치를 잘 찾아내도록 보정
@@ -122,6 +150,7 @@ export async function POST(req: NextRequest) {
 
     for (let i = 0; i < refWords.length; i++) {
       const original = refWords[i];
+      const stillHasSpeechAhead = j < spokenWords.length;
       let found = false;
 
       const searchEnd = Math.min(j + LOOK_AHEAD, spokenWords.length);
@@ -137,11 +166,18 @@ export async function POST(req: NextRequest) {
 
       if (!found) {
         wrongWords.push(original);
+        // 남은 음성이 없으면 이후 원문 단어는 "아직 못 읽은 부분"이지 "틀리게 읽은 단어"가
+        // 아니므로 화면 표시용 목록에는 넣지 않는다
+        if (stillHasSpeechAhead) {
+          missedWords.push(original);
+        }
       }
     }
 
     const uniqueBad = [...new Set(badPronunciations)];
     const uniqueWrong = [...new Set(wrongWords)];
+    // 발음이 어려운 단어로 이미 표시되는 단어는 놓친 단어 목록에서 중복 제외
+    const uniqueMissed = [...new Set(missedWords)].filter((w) => !uniqueBad.includes(w));
 
     // ---------------- 읽기 정확도 계산 ----------------
     const readingAccuracy =
@@ -154,13 +190,13 @@ export async function POST(req: NextRequest) {
     // ---------------- OpenAI 코멘트 생성 ----------------
     let pronunciationComment = "";
 
-    if (uniqueWrong.length > 0 || uniqueBad.length > 0) {
+    if (uniqueMissed.length > 0 || uniqueBad.length > 0) {
       const OpenAI = (await import("openai")).default;
       const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
       const prompt = `
       학생의 발음 점수: ${finalAccuracy}점
-      놓치거나 잘못 읽은 단어: ${uniqueWrong.slice(0, 5).join(", ")}
+      놓치거나 잘못 읽은 단어: ${uniqueMissed.slice(0, 5).join(", ")}
       발음이 다소 약했던 단어: ${uniqueBad.slice(0, 5).join(", ")}
 
       위 결과를 바탕으로 학부모가 이해하기 쉽게 격려와 함께 2~3줄의 학습 가이드를 한국어로 작성해 주세요.
@@ -183,6 +219,7 @@ export async function POST(req: NextRequest) {
       pronunciationComment,
       badPronunciations: uniqueBad,
       wrongWords: uniqueWrong,
+      missedWords: uniqueMissed,
       durationSec,
       recognizedText: collectedText.trim(),
     });

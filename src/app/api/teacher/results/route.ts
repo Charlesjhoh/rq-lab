@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
   if (auth.role === 'manager') {
     const { data, error } = await supabaseAdmin
       .from('reading_results')
-      .select('id, user_id, wpm, accuracy, comprehension, final_ar, created_at, is_unlocked, unlock_source')
+      .select('id, user_id, wpm, accuracy, comprehension, final_ar, reading_level, created_at, is_unlocked, unlock_source')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from('reading_results')
-    .select('id, user_id, wpm, accuracy, comprehension, final_ar, created_at, is_unlocked, unlock_source')
+    .select('id, user_id, wpm, accuracy, comprehension, final_ar, reading_level, created_at, is_unlocked, unlock_source')
     .in('user_id', studentIds)
     .order('created_at', { ascending: false });
 

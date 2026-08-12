@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { supabase } from '@/lib/supabase-client';
@@ -251,6 +252,14 @@ function CheckoutContent() {
           {isLoading ? '결제 정보를 계산 중입니다...' : '결제 정보를 불러오는 중...'}
         </div>
       )}
+
+      <p className="mt-4 text-center text-xs text-gray-400">
+        결제 진행 시{' '}
+        <Link href="/terms" className="underline hover:text-gray-600">
+          이용약관
+        </Link>
+        (청약철회·환불 규정 포함)에 동의한 것으로 간주됩니다.
+      </p>
     </div>
   );
 }

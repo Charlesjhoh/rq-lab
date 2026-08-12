@@ -43,6 +43,7 @@ type ReadingResult = {
   accuracy: number;
   comprehension: number;
   final_ar?: number;
+  reading_level?: "frustration" | "instructional" | "independent" | null;
   created_at: string;
   reference_text?: string;
   recognized_text?: string;
@@ -552,8 +553,25 @@ export default function TeacherPage() {
 
                           {/* AR + metrics */}
                           <div className="mt-4 flex items-center justify-between rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 px-5 py-4">
-                            <span className="text-xs font-medium uppercase tracking-widest text-indigo-300">
+                            <span className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-indigo-300">
                               AR Level
+                              {d.reading_level && (
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal ${
+                                    d.reading_level === "frustration"
+                                      ? "bg-rose-500/20 text-rose-300"
+                                      : d.reading_level === "independent"
+                                      ? "bg-emerald-500/20 text-emerald-300"
+                                      : "bg-sky-500/20 text-sky-300"
+                                  }`}
+                                >
+                                  {d.reading_level === "frustration"
+                                    ? "좌절"
+                                    : d.reading_level === "independent"
+                                    ? "독립"
+                                    : "학습"}
+                                </span>
+                              )}
                             </span>
                             <span className="text-2xl font-bold tabular-nums text-white">
                               {d.final_ar?.toFixed(1)}
@@ -601,6 +619,11 @@ export default function TeacherPage() {
 
                           {/* 진단 코멘트 */}
                           <div className="mt-3 space-y-1.5 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
+                            {d.reading_level === "frustration" && (
+                              <p className="font-medium text-rose-600">
+                                이 지문은 이 학생에게 너무 어려웠습니다 — 더 낮은 레벨로 재시험을 권장합니다
+                              </p>
+                            )}
                             {d.comprehension < 70 && (
                               <p>내용을 제대로 이해하지 못하고 있습니다</p>
                             )}

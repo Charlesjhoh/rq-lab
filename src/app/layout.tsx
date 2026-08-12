@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
 import { useEffect, useState } from "react";
 import { BookOpen, FileText, LogOut, LogIn, Wallet, Users, BarChart3, School } from "lucide-react";
+import Footer from "./components/Footer";
 
 export default function RootLayout({
   children,
@@ -154,6 +155,8 @@ useEffect(() => {
 
         {/* 기존 페이지 */}
         {children}
+
+        <Footer />
       </body>
     </html>
   );
