@@ -34,7 +34,7 @@ export default function Footer() {
         <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
           <div className="space-y-0.5 text-xs leading-relaxed text-slate-400">
             <p>상호: (주)베이컨랩스 · 대표: 오정현</p>
-            <p>사업자등록번호: 715-88-03752 · 통신판매업신고번호: 신고 준비 중</p>
+            <p>사업자등록번호: 715-88-03752 · 통신판매업신고번호: 제2026-경기파주-3431호</p>
             <p>주소: 파주시 경의로 1068 6층 603-31호</p>
             <p>고객센터: charles.j.h.oh@gmail.com</p>
             <p className="pt-1">© {new Date().getFullYear()} (주)베이컨랩스. All rights reserved.</p>
