@@ -83,31 +83,23 @@ function CheckoutContent() {
     setCouponMessage('');
 
     try {
-      let userId = null;
-      let accessToken = null;
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        userId = user.id;
-      }
-
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        userId = userId || session.user?.id;
-        accessToken = session.access_token;
+
+      if (!session?.access_token) {
+        setCouponMessage('❌ 로그인이 필요합니다.');
+        return;
       }
 
       const res = await fetch('/api/payments/create-intent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           productType,
           resultId,
           couponCode: coupon.trim(),
-          userId: userId,
           orderId: orderIdRef.current, // 👈 Ref의 최신 orderId 전달
         }),
       });

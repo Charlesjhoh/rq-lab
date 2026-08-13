@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { supabase } from '@/lib/supabase-client';
 
 function SuccessContent() {
   const searchParams = useSearchParams();
@@ -23,10 +24,23 @@ function SuccessContent() {
       }
 
       try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session?.access_token) {
+          setIsUpdating(false);
+          setStatusMessage('로그인이 필요합니다. 다시 로그인해 주세요.');
+          return;
+        }
+
         // 백엔드 confirm API 호출하여 엔타이틀먼트(패키지 크레딧/리포트 잠금 해제) 부여
         const res = await fetch('/api/payments/confirm', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
           body: JSON.stringify({
             paymentIntentId: paymentIntent,
             orderId: orderId,

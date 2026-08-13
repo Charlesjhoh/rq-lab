@@ -48,11 +48,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ consumed: false });
     }
 
+    // remaining_credits를 방금 읽은 값 기준으로 -1 해서 쓰되, WHERE에도 그 값을 그대로
+    // 조건으로 건다(비교-후-교체) — 동시에 두 번 호출되면(네트워크 재시도, 탭 중복 등)
+    // 뒤에 도착한 쪽은 이미 바뀐 값과 안 맞아 0행을 갱신하고 실패로 떨어진다. 이전에는
+    // `gt 0`만 확인해서, 두 요청 다 통과해버려 크레딧은 1개만 줄고 리포트는 2개 풀리는
+    // 경우가 있었다.
     const { data: decremented, error: decrementError } = await supabaseAdmin
       .from('credit_packages')
       .update({ remaining_credits: pkg.remaining_credits - 1 })
       .eq('id', pkg.id)
-      .gt('remaining_credits', 0)
+      .eq('remaining_credits', pkg.remaining_credits)
       .select()
       .maybeSingle();
 

@@ -67,7 +67,10 @@ export async function POST(req: NextRequest) {
     .eq('id', auth.user.id);
 
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+    // 위의 count 체크는 동시 가입 시 경쟁 조건이 있어 참고용일 뿐이고, 실제 정원
+    // 초과 방지는 DB 트리거(enforce_class_seat_limit)가 최종 관문이다 — 여기서
+    // 걸리면 트리거가 막은 것.
+    return NextResponse.json({ error: updateError.message }, { status: 403 });
   }
 
   return NextResponse.json({ joined: true, className: targetClass.name });
