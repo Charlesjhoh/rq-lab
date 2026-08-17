@@ -3,56 +3,9 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import * as PortOne from '@portone/browser-sdk/v2';
 import { supabase } from '@/lib/supabase-client';
 import { PRODUCT_PRICES, PRODUCT_LABELS } from '@/lib/products';
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
-
-function CheckoutForm({ finalAmount, resultId }: { finalAmount: number; resultId: string | null }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-
-    setLoading(true);
-    setErrorMessage('');
-
-    const returnUrl = new URL('/checkout/success', window.location.origin);
-    if (resultId) returnUrl.searchParams.set('resultId', resultId);
-
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: returnUrl.toString(),
-      },
-    });
-
-    if (error) {
-      setErrorMessage(error.message || '결제 중 오류가 발생했습니다.');
-      setLoading(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6 mt-4">
-      <PaymentElement />
-      {errorMessage && <p className="text-red-500 text-sm">{errorMessage}</p>}
-      <button
-        type="submit"
-        disabled={!stripe || loading}
-        className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
-      >
-        {loading ? '결제 처리 중...' : `₩${finalAmount.toLocaleString()} 결제하기`}
-      </button>
-    </form>
-  );
-}
 
 function CheckoutContent() {
   const router = useRouter();
@@ -61,24 +14,26 @@ function CheckoutContent() {
   const resultId = productType === 'single_report' ? searchParams.get('resultId') : null;
   const basePrice = PRODUCT_PRICES[productType];
 
-  const [clientSecret, setClientSecret] = useState('');
   const [couponInput, setCouponInput] = useState('');
   const [priceInfo, setPriceInfo] = useState({ original: basePrice, final: basePrice, discountAmount: 0 });
   const [couponMessage, setCouponMessage] = useState('');
   const [isFreePass, setIsFreePass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
+  const [payError, setPayError] = useState('');
+  const [ready, setReady] = useState(false);
 
-  // 💥 [핵심] 즉시 반영되는 Ref 객체로 중복 호출 및 orderId 관리
+  // 💥 즉시 반영되는 Ref 객체로 중복 호출 및 orderId 관리
   const orderIdRef = useRef<string | null>(null);
   const isCallingApiRef = useRef<boolean>(false);
 
-  const fetchPaymentIntent = async (coupon = '') => {
+  const fetchOrder = async (coupon = '') => {
     // 이미 API 호출이 진행 중이라면 동시 호출 차단!
     if (isCallingApiRef.current) return;
     isCallingApiRef.current = true;
 
     setIsLoading(true);
-    setClientSecret('');
+    setReady(false);
     setIsFreePass(false);
     setCouponMessage('');
 
@@ -129,23 +84,20 @@ function CheckoutContent() {
         return;
       }
 
-      // 일반 Stripe 결제 세션
-      if (data.clientSecret) {
-        setClientSecret(data.clientSecret);
-        const discount = data.discountAmount ?? 0;
+      const discount = data.discountAmount ?? 0;
 
-        setPriceInfo({
-          original: data.originalAmount ?? basePrice,
-          final: data.finalAmount ?? basePrice,
-          discountAmount: discount,
-        });
+      setPriceInfo({
+        original: data.originalAmount ?? basePrice,
+        final: data.finalAmount ?? basePrice,
+        discountAmount: discount,
+      });
+      setReady(true);
 
-        if (coupon.trim() !== '') {
-          if (discount > 0) {
-            setCouponMessage('🎉 쿠폰이 성공적으로 적용되었습니다!');
-          } else {
-            setCouponMessage('❌ 유효하지 않거나 만료된 쿠폰입니다.');
-          }
+      if (coupon.trim() !== '') {
+        if (discount > 0) {
+          setCouponMessage('🎉 쿠폰이 성공적으로 적용되었습니다!');
+        } else {
+          setCouponMessage('❌ 유효하지 않거나 만료된 쿠폰입니다.');
         }
       }
     } catch (err) {
@@ -159,13 +111,13 @@ function CheckoutContent() {
   };
 
   useEffect(() => {
-    fetchPaymentIntent();
+    fetchOrder();
   }, []);
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
     if (!couponInput.trim()) return;
-    fetchPaymentIntent(couponInput);
+    fetchOrder(couponInput);
   };
 
   const handleFreePassSubmit = () => {
@@ -174,6 +126,49 @@ function CheckoutContent() {
     if (orderIdRef.current) url.searchParams.set('orderId', orderIdRef.current);
     if (resultId) url.searchParams.set('resultId', resultId);
     router.push(url.pathname + url.search);
+  };
+
+  const handlePay = async () => {
+    if (!orderIdRef.current || isPaying) return;
+    setIsPaying(true);
+    setPayError('');
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setPayError('로그인이 필요합니다.');
+        return;
+      }
+
+      const paymentId = `report-${orderIdRef.current}-${crypto.randomUUID().slice(0, 8)}`;
+
+      const response = await PortOne.requestPayment({
+        storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
+        channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!,
+        paymentId,
+        orderName: PRODUCT_LABELS[productType] || productType,
+        totalAmount: priceInfo.final,
+        currency: 'KRW',
+        payMethod: 'CARD',
+        customer: session.user.email ? { email: session.user.email } : undefined,
+      });
+
+      if (!response || response.code) {
+        setPayError(response?.message || '결제가 취소되었거나 실패했습니다.');
+        return;
+      }
+
+      const url = new URL('/checkout/success', window.location.origin);
+      url.searchParams.set('paymentId', paymentId);
+      url.searchParams.set('orderId', orderIdRef.current);
+      if (resultId) url.searchParams.set('resultId', resultId);
+      router.push(url.pathname + url.search);
+    } catch (err) {
+      console.error(err);
+      setPayError('결제 중 오류가 발생했습니다.');
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   return (
@@ -226,7 +221,7 @@ function CheckoutContent() {
         </div>
       </div>
 
-      {/* Stripe 카드 결제 Form 또는 무료 결제 완료 버튼 */}
+      {/* 결제 버튼 또는 무료 결제 완료 버튼 */}
       {isFreePass ? (
         <button
           type="button"
@@ -235,10 +230,18 @@ function CheckoutContent() {
         >
           0원 결제 완료 및 시작하기 🎉
         </button>
-      ) : clientSecret ? (
-        <Elements key={clientSecret} stripe={stripePromise} options={{ clientSecret }}>
-          <CheckoutForm finalAmount={priceInfo.final} resultId={resultId} />
-        </Elements>
+      ) : ready ? (
+        <div className="space-y-3">
+          {payError && <p className="text-red-500 text-sm">{payError}</p>}
+          <button
+            type="button"
+            onClick={handlePay}
+            disabled={isPaying}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            {isPaying ? '결제 처리 중...' : `₩${priceInfo.final.toLocaleString()} 결제하기`}
+          </button>
+        </div>
       ) : (
         <div className="text-center py-8 text-gray-500">
           {isLoading ? '결제 정보를 계산 중입니다...' : '결제 정보를 불러오는 중...'}

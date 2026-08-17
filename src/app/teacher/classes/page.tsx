@@ -1,7 +1,8 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import * as PortOne from "@portone/browser-sdk/v2";
 import { supabase } from "@/lib/supabase-client";
 import {
   Users,
@@ -59,7 +60,6 @@ async function authedFetch(path: string, options: RequestInit = {}) {
 
 function TeacherClassesPageInner() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<ClassRow[]>([]);
@@ -76,18 +76,6 @@ function TeacherClassesPageInner() {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
-
-  useEffect(() => {
-    const checkoutStatus = searchParams.get("checkout");
-    if (checkoutStatus === "success") {
-      alert("결제가 완료되었습니다. 반영까지 잠시 걸릴 수 있어요.");
-      router.replace("/teacher/classes");
-    } else if (checkoutStatus === "cancel") {
-      alert("결제가 취소되었습니다.");
-      router.replace("/teacher/classes");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
 
   useEffect(() => {
     const init = async () => {
@@ -190,13 +178,32 @@ function TeacherClassesPageInner() {
       alert("좌석 수를 올바르게 입력해 주세요.");
       return;
     }
+    if (!currentTeacher) return;
 
     setSeatBusy(true);
     try {
+      // 카드를 한 번 등록해서 빌링키를 발급받는다 — 이후 정기 청구는 이 빌링키로 서버가 직접
+      // 청구한다(Stripe Checkout 같은 호스팅 결제 페이지가 없어 직접 결제창을 띄우는 방식).
+      const issueResponse = await PortOne.requestIssueBillingKey({
+        storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
+        channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!,
+        billingKeyMethod: "CARD",
+        issueName: "리드이비 선생님 좌석 구독",
+        customer: {
+          customerId: currentTeacher.id,
+          email: currentTeacher.email || undefined,
+        },
+      });
+
+      if (!issueResponse || issueResponse.code) {
+        alert(issueResponse?.message || "카드 등록이 취소되었거나 실패했습니다.");
+        return;
+      }
+
       const res = await authedFetch("/api/subscriptions/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seatCount: seats }),
+        body: JSON.stringify({ seatCount: seats, billingKey: issueResponse.billingKey }),
       });
 
       const data = await res.json();
@@ -205,7 +212,8 @@ function TeacherClassesPageInner() {
         return;
       }
 
-      window.location.href = data.url;
+      alert("구독이 시작되었습니다.");
+      await loadData();
     } catch (err) {
       console.error(err);
       alert("결제 요청 중 오류가 발생했습니다.");
@@ -245,18 +253,22 @@ function TeacherClassesPageInner() {
     }
   };
 
-  const handleOpenPortal = async () => {
+  const handleCancelSubscription = async () => {
+    if (!confirm("정기 구독을 해지할까요? 카드 등록도 함께 해제되며, 재구독하려면 카드를 다시 등록해야 합니다.")) {
+      return;
+    }
     try {
-      const res = await authedFetch("/api/subscriptions/portal", { method: "POST" });
+      const res = await authedFetch("/api/subscriptions/cancel", { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "결제 관리 페이지를 열 수 없습니다.");
+        alert(data.error || "구독 해지에 실패했습니다.");
         return;
       }
-      window.location.href = data.url;
+      alert("구독이 해지되었습니다.");
+      await loadData();
     } catch (err) {
       console.error(err);
-      alert("결제 관리 페이지를 여는 중 오류가 발생했습니다.");
+      alert("구독 해지 중 오류가 발생했습니다.");
     }
   };
 
@@ -432,11 +444,11 @@ function TeacherClassesPageInner() {
                   좌석 변경
                 </button>
                 <button
-                  onClick={handleOpenPortal}
+                  onClick={handleCancelSubscription}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 >
                   <Settings className="h-4 w-4" aria-hidden={true} />
-                  결제 관리
+                  구독 해지
                 </button>
               </div>
             </div>
@@ -501,9 +513,5 @@ function TeacherClassesPageInner() {
 }
 
 export default function TeacherClassesPage() {
-  return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-50" />}>
-      <TeacherClassesPageInner />
-    </Suspense>
-  );
+  return <TeacherClassesPageInner />;
 }

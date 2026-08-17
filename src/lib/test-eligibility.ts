@@ -18,6 +18,27 @@ function getKstMidnightUtc(): Date {
 
 export type TestEligibility = { allowed: true } | { allowed: false; reason: string };
 
+// class_id로 소속 선생님의 좌석 구독이 active/trialing인지 확인한다. checkTestEligibility(응시 시점
+// 반응적 체크)와 mypage(로그인 시 사전 고지 배너) 양쪽에서 재사용 — 학생이 테스트를 시도하기 전에
+// 이미 구독이 끊긴 걸 알 수 있어야 CS 문의로 이어지기 전에 상황을 파악할 수 있다.
+export async function isTeacherSubscriptionInactive(classId: string): Promise<boolean> {
+  const { data: klass } = await supabaseAdmin
+    .from("classes")
+    .select("teacher_id")
+    .eq("id", classId)
+    .maybeSingle();
+
+  if (!klass?.teacher_id) return false;
+
+  const { data: sub } = await supabaseAdmin
+    .from("teacher_subscriptions")
+    .select("status")
+    .eq("teacher_id", klass.teacher_id)
+    .maybeSingle();
+
+  return !sub || !ACTIVE_SUBSCRIPTION_STATUSES.includes(sub.status);
+}
+
 // 리딩테스트 응시 가능 여부를 판정한다. 두 가지를 본다:
 // 1) 소속 선생님이 있다면, 그 선생님의 좌석 구독이 active/trialing 상태인지
 //    (구독이 해지돼도 이미 가입된 학생의 class_id는 그대로 남아 계속 무료로 쓸 수 있었음)
@@ -30,25 +51,11 @@ export async function checkTestEligibility(userId: string): Promise<TestEligibil
     .maybeSingle();
 
   if (profile?.class_id) {
-    const { data: klass } = await supabaseAdmin
-      .from("classes")
-      .select("teacher_id")
-      .eq("id", profile.class_id)
-      .maybeSingle();
-
-    if (klass?.teacher_id) {
-      const { data: sub } = await supabaseAdmin
-        .from("teacher_subscriptions")
-        .select("status")
-        .eq("teacher_id", klass.teacher_id)
-        .maybeSingle();
-
-      if (!sub || !ACTIVE_SUBSCRIPTION_STATUSES.includes(sub.status)) {
-        return {
-          allowed: false,
-          reason: "선생님의 구독이 활성화되어 있지 않아 테스트를 진행할 수 없습니다. 선생님께 문의해 주세요.",
-        };
-      }
+    if (await isTeacherSubscriptionInactive(profile.class_id)) {
+      return {
+        allowed: false,
+        reason: "선생님의 구독이 활성화되어 있지 않아 테스트를 진행할 수 없습니다. 선생님께 문의해 주세요.",
+      };
     }
   }
 

@@ -43,9 +43,16 @@ export async function POST(req: NextRequest) {
   const expiresAt = body.expiresAt || null;
   const isActive = body.isActive !== false;
   const customCode = (body.code || '').trim().toUpperCase();
+  const rawMaxUses = body.maxUses;
+  const maxUses =
+    rawMaxUses === '' || rawMaxUses === null || rawMaxUses === undefined ? null : Number(rawMaxUses);
 
   if (!Number.isFinite(discountValue) || discountValue <= 0) {
     return NextResponse.json({ error: '유효한 할인 값을 입력해 주세요.' }, { status: 400 });
+  }
+
+  if (maxUses !== null && (!Number.isInteger(maxUses) || maxUses <= 0)) {
+    return NextResponse.json({ error: '사용 횟수 제한은 1 이상의 정수이거나 비워둬야 합니다.' }, { status: 400 });
   }
 
   // 코드가 지정되지 않았으면 서버에서 랜덤 생성 (충돌 시 최대 5회 재시도)
@@ -60,6 +67,7 @@ export async function POST(req: NextRequest) {
         discount_value: discountValue,
         expires_at: expiresAt,
         is_active: isActive,
+        max_uses: maxUses,
       })
       .select()
       .single();

@@ -14,6 +14,8 @@ type Coupon = {
   expires_at: string | null;
   is_active: boolean;
   created_at: string;
+  max_uses: number | null;
+  used_count: number;
 };
 
 async function authedFetch(path: string, options: RequestInit = {}) {
@@ -51,6 +53,7 @@ export default function ManagerCouponsPage() {
   const [discountType, setDiscountType] = useState<"percent" | "amount">("percent");
   const [discountValue, setDiscountValue] = useState("10");
   const [expiresAt, setExpiresAt] = useState("");
+  const [maxUses, setMaxUses] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [creating, setCreating] = useState(false);
   const [message, setMessage] = useState("");
@@ -116,6 +119,7 @@ export default function ManagerCouponsPage() {
           discountValue,
           expiresAt: expiresAt ? kstEndOfDayIso(expiresAt) : null,
           isActive,
+          maxUses: maxUses.trim() === "" ? null : maxUses,
         }),
       });
 
@@ -128,6 +132,7 @@ export default function ManagerCouponsPage() {
 
       setMessage(`✅ 쿠폰 "${data.coupon.code}" 생성 완료`);
       setCode("");
+      setMaxUses("");
       loadCoupons();
     } catch (err) {
       console.error(err);
@@ -232,6 +237,18 @@ export default function ManagerCouponsPage() {
               />
             </label>
 
+            <label className="text-xs text-slate-500">
+              사용 횟수 제한
+              <input
+                type="number"
+                min={1}
+                value={maxUses}
+                onChange={(e) => setMaxUses(e.target.value)}
+                placeholder="비우면 무제한"
+                className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-2 text-sm"
+              />
+            </label>
+
             <label className="col-span-2 flex items-center gap-2 text-xs text-slate-500 sm:col-span-4">
               <input
                 type="checkbox"
@@ -278,6 +295,7 @@ export default function ManagerCouponsPage() {
                     <th className="py-2 pr-3 font-medium">코드</th>
                     <th className="py-2 pr-3 font-medium">할인</th>
                     <th className="py-2 pr-3 font-medium">만료일</th>
+                    <th className="py-2 pr-3 font-medium">사용</th>
                     <th className="py-2 pr-3 font-medium">생성일</th>
                     <th className="py-2 font-medium">상태</th>
                   </tr>
@@ -292,6 +310,9 @@ export default function ManagerCouponsPage() {
                           : `${c.discount_value}%`}
                       </td>
                       <td className="py-2.5 pr-3 text-xs text-slate-500">{formatDate(c.expires_at)}</td>
+                      <td className="py-2.5 pr-3 text-xs text-slate-500">
+                        {c.max_uses == null ? `${c.used_count}회 (무제한)` : `${c.used_count} / ${c.max_uses}`}
+                      </td>
                       <td className="py-2.5 pr-3 text-xs text-slate-500">{formatDate(c.created_at)}</td>
                       <td className="py-2.5">
                         <button

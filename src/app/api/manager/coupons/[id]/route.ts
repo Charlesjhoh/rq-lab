@@ -22,6 +22,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
     updates.discount_value = value;
   }
+  if ('maxUses' in body) {
+    const raw = body.maxUses;
+    const maxUses = raw === '' || raw === null || raw === undefined ? null : Number(raw);
+    if (maxUses !== null && (!Number.isInteger(maxUses) || maxUses <= 0)) {
+      return NextResponse.json(
+        { error: '사용 횟수 제한은 1 이상의 정수이거나 비워둬야 합니다.' },
+        { status: 400 }
+      );
+    }
+    updates.max_uses = maxUses;
+  }
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: '변경할 내용이 없습니다.' }, { status: 400 });

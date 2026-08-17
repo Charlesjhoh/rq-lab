@@ -30,6 +30,29 @@ export async function grantEntitlementForOrder(orderId: string) {
 
   const order = flipped;
 
+  // 쿠폰이 걸린 주문이면 여기(엔타이틀먼트가 실제로 지급되는 유일한 관문)서 사용 횟수를 정산한다.
+  // redeem_coupon()은 max_uses 상한을 원자적으로 체크-후-증가하므로 동시 요청에도 안전하다.
+  if (order.coupon_id) {
+    const { data: redeemed, error: redeemError } = await supabaseAdmin.rpc('redeem_coupon', {
+      p_coupon_id: order.coupon_id,
+    });
+
+    if (redeemError) {
+      console.error('❌ 쿠폰 사용 카운트 갱신 실패:', redeemError.message);
+    } else if (!redeemed) {
+      if (order.final_amount === 0) {
+        // 무료(freePass) 주문 — 실제로 결제된 돈이 없으므로 한도 초과 시 지급을 거부한다
+        await supabaseAdmin
+          .from('orders')
+          .update({ status: 'failed', updated_at: new Date().toISOString() })
+          .eq('id', orderId);
+        return { granted: false as const, reason: 'coupon_limit_exceeded' as const };
+      }
+      // 유료 주문은 결제가 이미 성공한 뒤이므로 지급은 그대로 진행하고 이상 상태만 기록
+      console.error('⚠️ 쿠폰 사용 한도 초과 상태에서 유료 주문이 처리됨(결제 완료라 지급은 진행):', orderId);
+    }
+  }
+
   if (order.product_type === 'package_2x_month') {
     const grantedAt = new Date();
     const expiresAt = new Date(grantedAt.getTime() + PACKAGE_DURATION_DAYS * 24 * 60 * 60 * 1000);

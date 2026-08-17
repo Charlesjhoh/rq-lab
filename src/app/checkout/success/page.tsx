@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase-client';
 
 function SuccessContent() {
   const searchParams = useSearchParams();
-  const paymentIntent = searchParams.get('payment_intent');
+  const paymentId = searchParams.get('paymentId');
   const orderId = searchParams.get('orderId');
   const resultId = searchParams.get('resultId');
   const isFreePass = searchParams.get('freePass') === 'true';
@@ -17,7 +17,7 @@ function SuccessContent() {
 
   useEffect(() => {
     const confirmPayment = async () => {
-      if (!paymentIntent && !orderId && !isFreePass) {
+      if (!paymentId && !orderId && !isFreePass) {
         setIsUpdating(false);
         setStatusMessage('주문 정보를 찾을 수 없습니다.');
         return;
@@ -42,7 +42,7 @@ function SuccessContent() {
             Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            paymentIntentId: paymentIntent,
+            paymentId: paymentId,
             orderId: orderId,
             isFreePass: isFreePass,
           }),
@@ -62,7 +62,7 @@ function SuccessContent() {
     };
 
     confirmPayment();
-  }, [paymentIntent, orderId, isFreePass]);
+  }, [paymentId, orderId, isFreePass]);
 
   return (
     <div className="max-w-md mx-auto my-20 p-8 bg-white shadow-lg rounded-2xl text-center">

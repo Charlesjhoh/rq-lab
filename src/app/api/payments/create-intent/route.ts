@@ -1,24 +1,11 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { supabaseAdmin, requireUser } from '@/lib/supabase-admin';
 import { PRODUCT_PRICES } from '@/lib/products';
 
 export async function POST(req: Request) {
   try {
-    const secretKey = process.env.STRIPE_SECRET_KEY;
-    if (!secretKey) {
-      return NextResponse.json(
-        { error: 'Stripe API Key가 설정되지 않았습니다.' },
-        { status: 500 }
-      );
-    }
-
-    const stripe = new Stripe(secretKey, {
-      apiVersion: '2023-10-16' as any,
-    });
-
     // 결제 주문 생성은 반드시 로그인한 본인 명의로만 — userId를 body에서 받아 그대로
     // 믿으면 남의 계정으로 주문을 만들거나(크레딧 오배정), 남의 resultId를 지정해 결제
     // 흐름을 태워 남의 리포트를 잠금 해제할 수 있었다.
@@ -32,7 +19,6 @@ export async function POST(req: Request) {
     const { couponCode, orderId: existingOrderId, resultId: rawResultId } = body;
     const productType = body.productType === 'package_2x_month' ? 'package_2x_month' : 'single_report';
     const resultId = productType === 'single_report' ? rawResultId || null : null;
-    const currency = 'krw';
     // 💡 가격은 서버가 상품 종류로 확정한다 — 클라이언트가 보낸 금액은 신뢰하지 않음
     const amount = PRODUCT_PRICES[productType];
 
@@ -67,7 +53,9 @@ export async function POST(req: Request) {
         const now = new Date();
         const expiresAt = coupon.expires_at ? new Date(coupon.expires_at) : null;
 
-        if (!expiresAt || expiresAt > now) {
+        const usesLeft = coupon.max_uses == null || coupon.used_count < coupon.max_uses;
+
+        if ((!expiresAt || expiresAt > now) && usesLeft) {
           couponId = coupon.id;
           const value = Number(coupon.discount_value) || 0;
           const type = String(coupon.discount_type).toLowerCase();
@@ -145,36 +133,16 @@ export async function POST(req: Request) {
       });
     }
 
-    // Stripe PaymentIntent 생성
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: finalAmount,
-      currency: currency.toLowerCase(),
-      automatic_payment_methods: { enabled: true },
-      metadata: {
-        userId: userId || 'anonymous',
-        orderId: orderId || 'none',
-        couponId: couponId || 'NONE',
-        productId: productType,
-        resultId: resultId || 'none',
-      },
-    });
-
-    if (orderId) {
-      await supabaseAdmin
-        .from('orders')
-        .update({ stripe_payment_intent_id: paymentIntent.id })
-        .eq('id', orderId);
-    }
-
+    // 💡 포트원은 Stripe PaymentIntent 같은 사전 생성 세션이 필요 없다 — 클라이언트가
+    // PortOne.requestPayment()를 직접 호출하므로 서버는 금액/주문 정보만 확정해서 돌려주면 된다.
     return NextResponse.json({
-      clientSecret: paymentIntent.client_secret,
       originalAmount: amount,
       finalAmount: finalAmount,
       discountAmount: discountAmount,
       orderId: orderId,
     });
   } catch (error: any) {
-    console.error('PaymentIntent 생성 에러:', error.message);
+    console.error('결제 준비 에러:', error.message);
     return NextResponse.json(
       { error: error.message || '결제 요청 처리 중 오류가 발생했습니다.' },
       { status: 500 }

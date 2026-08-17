@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { PRODUCT_LABELS } from "@/lib/products";
+import { isTeacherSubscriptionInactive } from "@/lib/test-eligibility";
 import JoinClassForm from "./JoinClassForm";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +13,8 @@ const STATUS_LABELS: Record<string, string> = {
   paid: "결제 완료",
   completed: "결제 완료",
   pending: "결제 대기",
+  refunded: "환불됨",
+  failed: "처리 실패",
 };
 
 function formatDate(value: string) {
@@ -73,9 +76,22 @@ export default async function MyPage() {
   const totalRemaining = (packages || []).reduce((sum, p) => sum + p.remaining_credits, 0);
   const nearestExpiry = packages && packages.length > 0 ? packages[0].expires_at : null;
 
+  // 선생님 구독이 끊긴 걸 학생이 테스트를 시도하다 실패해서야 알게 되는 대신, 로그인 직후
+  // mypage에서 먼저 알 수 있게 사전 고지한다 (별도 알림/이메일 인프라가 없어 이 방식으로 대체).
+  const teacherSubscriptionInactive =
+    profile?.role === "student" && profile.class_id
+      ? await isTeacherSubscriptionInactive(profile.class_id)
+      : false;
+
   return (
     <div className="max-w-2xl mx-auto my-12 px-4 space-y-8">
       <h1 className="text-2xl font-bold text-gray-800">마이페이지</h1>
+
+      {teacherSubscriptionInactive && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          선생님의 구독이 활성화되어 있지 않아 테스트 응시가 제한됩니다. 선생님께 문의해 주세요.
+        </div>
+      )}
 
       {profile?.role === "student" && (
         <JoinClassForm alreadyJoined={Boolean(profile.class_id)} />
@@ -139,6 +155,8 @@ export default async function MyPage() {
                         className={
                           order.status === "paid" || order.status === "completed"
                             ? "text-green-600 font-medium"
+                            : order.status === "refunded" || order.status === "failed"
+                            ? "text-red-500 font-medium"
                             : "text-gray-400"
                         }
                       >
