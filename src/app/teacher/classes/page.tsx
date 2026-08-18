@@ -29,6 +29,7 @@ type Subscription = {
   status: string;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
+  hasBillingKey: boolean;
 } | null;
 
 type Student = {
@@ -142,7 +143,10 @@ function TeacherClassesPageInner() {
 
   const usedSeats = students.length;
   const seatCount = subscription?.seat_count || 0;
-  const hasActiveSubscription = subscription && ["active", "trialing", "past_due"].includes(subscription.status);
+  const hasActiveSubscription =
+    !!subscription &&
+    ["active", "trialing", "past_due"].includes(subscription.status) &&
+    subscription.hasBillingKey;
 
   const studentCountByClass = (classId: string) => students.filter((s) => s.class_id === classId).length;
 

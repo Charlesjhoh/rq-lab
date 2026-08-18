@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: true }),
     supabaseAdmin
       .from('teacher_subscriptions')
-      .select('seat_count, status, current_period_end, cancel_at_period_end')
+      .select('seat_count, status, current_period_end, cancel_at_period_end, portone_billing_key')
       .eq('teacher_id', auth.user.id)
       .maybeSingle(),
   ]);
@@ -32,7 +32,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ classes: classes || [], subscription: subscription || null });
+  // portone_billing_key 자체는 클라이언트로 내려보내지 않고 존재 여부만 전달한다.
+  // (Stripe → PortOne 전환 이전 구독은 status는 'active'지만 이 컬럼이 비어 있어, 상태값만으로
+  // 판단하면 좌석 변경/해지 모두 실패하는 막다른 상태가 된다.)
+  const subscriptionOut = subscription
+    ? {
+        seat_count: subscription.seat_count,
+        status: subscription.status,
+        current_period_end: subscription.current_period_end,
+        cancel_at_period_end: subscription.cancel_at_period_end,
+        hasBillingKey: !!subscription.portone_billing_key,
+      }
+    : null;
+
+  return NextResponse.json({ classes: classes || [], subscription: subscriptionOut });
 }
 
 export async function POST(req: NextRequest) {

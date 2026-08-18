@@ -26,11 +26,13 @@ export async function POST(req: NextRequest) {
 
   const { data: existing } = await supabaseAdmin
     .from('teacher_subscriptions')
-    .select('status')
+    .select('status, portone_billing_key')
     .eq('teacher_id', auth.user.id)
     .maybeSingle();
 
-  if (existing && ['active', 'trialing', 'past_due'].includes(existing.status)) {
+  // billing_key가 없으면 status가 'active'로 남아 있어도(Stripe → PortOne 전환 이전 구독 등)
+  // 실제로는 청구할 수단이 없는 상태이므로 신규 구독처럼 카드 등록을 다시 받는다.
+  if (existing?.portone_billing_key && ['active', 'trialing', 'past_due'].includes(existing.status)) {
     return NextResponse.json({ error: '이미 구독 중입니다. 좌석 변경은 좌석 변경 기능을 사용해 주세요.' }, { status: 400 });
   }
 
