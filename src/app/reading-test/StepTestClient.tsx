@@ -256,17 +256,20 @@ export default function StepTestClient({
         if (h.reference_text) lastReadAt.set(h.reference_text, h.created_at);
       });
 
-      // 2. 해당 레벨 근방(±0.5)과 난이도 밴드가 겹치는 지문 조회.
+      // 2. 해당 레벨 근방과 난이도 밴드가 겹치는 지문 조회.
       // 지문마다 [ar_min, ar_max]가 0.4 폭으로 촘촘히(0.1 간격) 깔려 있어서, 선택 레벨
       // 정확히 그 점을 관통하는 지문만 보면(예전 조건) 같은 레벨로 등록된 지문 대부분이
-      // 후보에서 빠지고 몇 개만 남아 반복 노출되는 문제가 있었다. ±0.5 범위로 겹치는
-      // 지문 전체를 후보로 넓힌다.
-      const LEVEL_RANGE = 0.5;
+      // 후보에서 빠지고 몇 개만 남아 반복 노출되는 문제가 있었다. 범위를 넓혀 겹치는
+      // 지문 전체를 후보로 삼되, 비대칭으로 둔다: 위쪽(선택 레벨보다 어려운 지문)은
+      // +0.3까지만 허용해 "1.0을 선택했는데 체감 2.0 지문이 나오는" 문제를 줄이고,
+      // 아래쪽(더 쉬운 지문)은 -0.7까지 넓게 허용해 후보 풀이 줄어드는 걸 상쇄한다.
+      const UPPER_RANGE = 0.3;
+      const LOWER_RANGE = 0.7;
       const { data: allPassages } = await supabase
         .from("passages")
         .select("*")
-        .gte("ar_max", lvl - LEVEL_RANGE)
-        .lte("ar_min", lvl + LEVEL_RANGE);
+        .gte("ar_max", lvl - LOWER_RANGE)
+        .lte("ar_min", lvl + UPPER_RANGE);
 
       if (allPassages && allPassages.length > 0) {
         // 3. 이미 풀어본 지문(content 기준)을 제외한 신규 지문만 우선 후보로
@@ -604,11 +607,9 @@ export default function StepTestClient({
         ? "AR2"
         : "AR1";
 
-    // 승급 판정: "독립" 판정 자체는 comprehension 70만 넘어도 뜨지만(AR 점수 계산용 완화 기준),
-    // "다음 레벨 통째로 넘어가라"는 권유는 그보다 더 확실한 신호가 필요하다. comprehension이
-    // 70~85 사이의 턱걸이 독립 판정(예: 75%)까지 승급을 권하면 성급하게 느껴질 수 있어서,
-    // 승급 권유에는 comprehension 85 이상(더 확실한 이해)을 추가로 요구한다.
-    const confidentlyIndependent = readingLevel === "independent" && comprehensionScore >= 85;
+    // 승급 권유 문턱은 60 — 재테스트 유도가 참여도/마케팅 관점에서 유리하므로 다소
+    // 낮춰서 "독립" 판정이 나면 웬만하면 상위 레벨 테스트를 권한다.
+    const confidentlyIndependent = readingLevel === "independent" && comprehensionScore >= 60;
     let levelUp: "AR2" | "AR3" | "AR4" | null = null;
     if (confidentlyIndependent) {
       if (testedLevel === "AR1") levelUp = "AR2";
