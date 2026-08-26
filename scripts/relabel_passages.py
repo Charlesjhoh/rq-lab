@@ -56,6 +56,15 @@ def load_env():
     return env
 
 
+# 길이 하한: FK/CLI는 "문장당 평균 단어수" 기반이라, 짧고 단순한 문장을 여러 개 이어붙인 긴
+# 지문(예: 13문장·83단어짜리 금붕어 이야기가 AR1.4로 나온 사례)을 구조적으로 못 잡아낸다.
+# 실제 쉬운 지문 집단은 최대 35단어/5문장을 넘지 않으므로, 그 이상 길면 계산된 center와
+# 무관하게 다음 밴드(AR2.0) 이상으로 끌어올린다.
+LENGTH_FLOOR_WORDS = 40
+LENGTH_FLOOR_SENTENCES = 6
+LENGTH_FLOOR_CENTER = 1.8
+
+
 def estimate_center(content: str, word_count: int):
     fk = textstat.flesch_kincaid_grade(content)
     cli = textstat.coleman_liau_index(content)
@@ -63,6 +72,11 @@ def estimate_center(content: str, word_count: int):
     # 짧은 지문 보정 (2026-08-11 기존 방식 유지): 단어수/15를 상한으로 사용
     capped = min(blended, word_count / 15)
     center = max(0.5, round(capped, 1))
+
+    sentence_count = textstat.sentence_count(content)
+    if word_count > LENGTH_FLOOR_WORDS or sentence_count > LENGTH_FLOOR_SENTENCES:
+        center = max(center, LENGTH_FLOOR_CENTER)
+
     return center, fk, cli
 
 

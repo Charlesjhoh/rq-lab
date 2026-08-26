@@ -67,6 +67,10 @@ const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 // trust 램프 구간 — 50%에서 신뢰도 0, 95%에서 신뢰도 1 (기존 Betts 기반 좌절/독립 경계값 재사용)
 const TRUST_LOW = 50;
 const TRUST_HIGH = 95;
+// trust 바닥값 — 정확도/이해도 중 하나가 완전히 무너져도(trust=0) 속도 신호를 100% 무시하지는
+// 않도록 최소한의 인정폭을 남겨둔다. 그렇지 않으면 "빠르고 정확하게 읽었지만 이해도만 낮은" 경우도
+// 지문을 아예 못 읽은 경우와 동일하게 취급되어 지나치게 가혹한 결과가 나온다.
+const MIN_TRUST = 0.25;
 // speedAR이 textCenter보다 낮을 때, trust가 낮은 경우 되돌아가는 폭의 상한(AR 절대값 기준 고정폭).
 // 실제 결과 데이터로 백테스트해보니 textCenter와의 "격차 비율"로 계산하면 지문이 학생 실력보다
 // 훨씬 어려울 때(예: 실력은 AR1.6대인데 지문이 AR8.6대) 그 격차의 30%가 그대로 반영돼 결과가
@@ -104,8 +108,9 @@ function calculateFinalAR(
   const accuracyTrust = clamp01((accuracy - TRUST_LOW) / (TRUST_HIGH - TRUST_LOW));
   const comprehensionTrust = clamp01((comprehension - TRUST_LOW) / (TRUST_HIGH - TRUST_LOW));
   // 둘 다 받쳐줘야 신뢰도가 높아짐 — 하나라도 약하면 곱셈으로 확 낮아진다
-  // (기존 "accuracy<90 OR comprehension<50" 하드 게이트의 정신을 연속값으로 계승)
-  const trust = accuracyTrust * comprehensionTrust;
+  // (기존 "accuracy<90 OR comprehension<50" 하드 게이트의 정신을 연속값으로 계승).
+  // 다만 곱셈이라 한쪽이 0이면 trust가 통째로 0이 되어버리는 걸 막기 위해 최소 바닥값은 둔다.
+  const trust = Math.max(MIN_TRUST, accuracyTrust * comprehensionTrust);
 
   let baseAR: number;
   if (speedAR >= textCenter) {
@@ -204,6 +209,10 @@ export default function StepTestClient({
     // 체크한 값이 계속 남아있어서 — 이미 오늘 3회를 다 채운 뒤에도 계속 통과돼버렸다.
     if (phase !== "ready") return;
 
+    // 재확인이 끝나기 전까지는 이전(예: 레벨업 재도전 전, 아직 한도 안 찼을 때) 값이 그대로
+    // 남아있으면 그 값을 믿고 바로 시작 버튼을 눌러버릴 수 있다 — 새로 확인하는 동안은
+    // 반드시 null(확인 중) 상태로 되돌려 시작을 막는다.
+    setEligibility(null);
     let active = true;
 
     const runCheck = async (accessToken: string) => {
@@ -438,6 +447,15 @@ export default function StepTestClient({
 
     if (!pronunRes.ok) {
       const errData = await pronunRes.json().catch(() => ({}));
+      if (pronunRes.status === 403) {
+        // 사전 체크(ready 화면 진입 시)를 통과한 뒤 자정을 넘겼거나 다른 탭에서 테스트를
+        // 더 본 경우의 마지막 안전장치 — alert만 띄우고 방치하면 결과 없이 멈춘 화면에
+        // 갇히므로, ready 화면의 차단 패널로 돌려보낸다.
+        setEligibility({ allowed: false, reason: errData.error });
+        setRecallPhase("idle");
+        setPhase("ready");
+        return;
+      }
       alert(errData.error || "발음 분석 실패");
       return;
     }
@@ -652,6 +670,15 @@ export default function StepTestClient({
     <div className="min-h-screen w-full bg-slate-50 px-4 py-10 sm:py-14">
       <div className="mx-auto w-full max-w-3xl">
         {/* READY */}
+        {phase === "ready" && eligibility === null && (
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-col items-center gap-3 bg-gradient-to-br from-slate-900 to-slate-800 px-6 py-16 text-center sm:px-10">
+              <Sparkles className="h-6 w-6 animate-pulse text-indigo-300" aria-hidden={true} />
+              <p className="text-sm text-slate-300">응시 가능 여부 확인 중...</p>
+            </div>
+          </div>
+        )}
+
         {phase === "ready" && eligibility && !eligibility.allowed && (
           <div className="overflow-hidden rounded-3xl border border-orange-200 bg-white shadow-sm">
             <div className="bg-gradient-to-br from-orange-600 to-orange-500 px-6 py-8 sm:px-10 sm:py-10">
@@ -667,7 +694,7 @@ export default function StepTestClient({
           </div>
         )}
 
-        {phase === "ready" && (!eligibility || eligibility.allowed) && (
+        {phase === "ready" && eligibility && eligibility.allowed && (
           <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 px-6 py-8 sm:px-10 sm:py-10">
               <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-indigo-300">
