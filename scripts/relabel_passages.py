@@ -65,12 +65,24 @@ LENGTH_FLOOR_SENTENCES = 6
 LENGTH_FLOOR_CENTER = 1.8
 
 
+# 아주 짧은 지문(20~35단어, 문장 3~4개)은 FK/CLI가 문장 하나, 단어 하나만 살짝 길어도
+# 평균이 크게 흔들린다 — 실측 결과, 내용·어휘 난이도가 사실상 동일한 27~30단어 지문들이
+# (예: "We visit a big apple orchard..." vs "Look at the small yellow duck...") 단어 하나
+# 차이로 center가 0.5~1.9까지 벌어졌다. 기존 word_count/15 상한(30단어 기준 cap 2.0)은 이
+# 노이즈를 다 못 걸러내 "2.0 레벨을 선택했는데 체감 1.0짜리 4문장 지문이 나온다"는 문제로
+# 이어졌다. 20~35단어 구간에는 더 촘촘한 상한(word_count/25, 30단어 기준 cap 1.2)을 따로
+# 적용해 이 구간 지문들이 실제 체감 난이도(대체로 AR1.0 근방)에 더 가깝게 수렴하도록 한다.
+SHORT_WORD_CEILING = 35
+SHORT_CAP_DIVISOR = 25
+DEFAULT_CAP_DIVISOR = 15
+
+
 def estimate_center(content: str, word_count: int):
     fk = textstat.flesch_kincaid_grade(content)
     cli = textstat.coleman_liau_index(content)
     blended = (fk + cli) / 2
-    # 짧은 지문 보정 (2026-08-11 기존 방식 유지): 단어수/15를 상한으로 사용
-    capped = min(blended, word_count / 15)
+    cap_divisor = SHORT_CAP_DIVISOR if word_count <= SHORT_WORD_CEILING else DEFAULT_CAP_DIVISOR
+    capped = min(blended, word_count / cap_divisor)
     center = max(0.5, round(capped, 1))
 
     sentence_count = textstat.sentence_count(content)
