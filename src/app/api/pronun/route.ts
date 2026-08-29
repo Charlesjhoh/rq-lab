@@ -64,10 +64,18 @@ export async function POST(req: NextRequest) {
     let finalAccuracy = 0;
     let totalDuration = 0;
     let badPronunciations: string[] = [];
+    // 녹음 시작부터 아이가 실제로 첫 단어를 말하기까지 걸린 무음 구간 — 첫 인식 결과의
+    // offset(스트림 시작 기준 오프셋)이 곧 그 길이다. 클라이언트가 wall-clock 기반
+    // 소요시간에서 이 값만 빼면, 읽는 도중의 의도적인 쉬는 시간(WPM에 반영되어야 함)은
+    // 그대로 두면서 "카운트다운 끝나고 멍하니 있던 시간"만 걷어낼 수 있다.
+    let leadingSilenceTicks: number | null = null;
 
     await new Promise<void>((resolve) => {
       recognizer.recognized = (s, e) => {
         if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
+          if (leadingSilenceTicks === null) {
+            leadingSilenceTicks = e.result.offset ?? 0;
+          }
           collectedText += e.result.text + " ";
 
           const paResult = SpeechSDK.PronunciationAssessmentResult.fromResult(e.result);
@@ -186,6 +194,7 @@ export async function POST(req: NextRequest) {
         : Math.min(100, Math.round((matchCount / refWords.length) * 100));
 
     const durationSec = Math.max(1, totalDuration / 10000000);
+    const leadingSilenceSec = Math.max(0, (leadingSilenceTicks ?? 0) / 10000000);
 
     // ---------------- OpenAI 코멘트 생성 ----------------
     let pronunciationComment = "";
@@ -221,6 +230,7 @@ export async function POST(req: NextRequest) {
       wrongWords: uniqueWrong,
       missedWords: uniqueMissed,
       durationSec,
+      leadingSilenceSec,
       recognizedText: collectedText.trim(),
     });
   } catch (e: any) {

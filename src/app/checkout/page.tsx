@@ -12,6 +12,10 @@ function CheckoutContent() {
   const searchParams = useSearchParams();
   const productType = searchParams.get('type') === 'package' ? 'package_2x_month' : 'single_report';
   const resultId = productType === 'single_report' ? searchParams.get('resultId') : null;
+  // 패키지 결제는 주문에 result_id를 실어 보내지 않지만(서버가 어차피 무시함), 특정
+  // 리포트를 잠금 해제하려고 들어온 사용자는 결제 후 그 리포트로 돌아가야 하므로
+  // 복귀 경로만 별도로 항상 보존한다.
+  const returnResultId = searchParams.get('resultId');
   const basePrice = PRODUCT_PRICES[productType];
 
   const [couponInput, setCouponInput] = useState('');
@@ -124,7 +128,7 @@ function CheckoutContent() {
     const url = new URL('/checkout/success', window.location.origin);
     url.searchParams.set('freePass', 'true');
     if (orderIdRef.current) url.searchParams.set('orderId', orderIdRef.current);
-    if (resultId) url.searchParams.set('resultId', resultId);
+    if (returnResultId) url.searchParams.set('resultId', returnResultId);
     router.push(url.pathname + url.search);
   };
 
@@ -161,7 +165,7 @@ function CheckoutContent() {
       const url = new URL('/checkout/success', window.location.origin);
       url.searchParams.set('paymentId', paymentId);
       url.searchParams.set('orderId', orderIdRef.current);
-      if (resultId) url.searchParams.set('resultId', resultId);
+      if (returnResultId) url.searchParams.set('resultId', returnResultId);
       router.push(url.pathname + url.search);
     } catch (err) {
       console.error(err);

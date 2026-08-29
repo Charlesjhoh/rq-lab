@@ -10,6 +10,7 @@ import {
   Timer,
   Target,
   Brain,
+  Mic,
   BookOpen,
   FileText,
   Sparkles,
@@ -41,6 +42,7 @@ type ReadingResult = {
   user_id?: string;
   wpm: number;
   accuracy: number;
+  pronunciation_accuracy?: number | null;
   comprehension: number;
   final_ar?: number;
   reading_level?: "frustration" | "instructional" | "independent" | null;
@@ -218,25 +220,26 @@ export default function TeacherPage() {
     (u.student_name || "").includes(keyword)
   );
 
+  // 최근에 테스트를 본 학생이 먼저 보이도록 정렬 — 아직 테스트를 안 본 학생은 맨 아래로.
   const sortedUsers = [...filteredUsers].sort((a, b) => {
     const A = latestByProfileId[a.id];
     const B = latestByProfileId[b.id];
 
-    const score = (x: any) => {
-      if (!x) return -1; 
-      let risk = 0;
-      if (x.comprehension < 70) risk += 3;
-      if (x.accuracy < 75) risk += 2;
-      if (x.wpm < 80) risk += 1;
-      return risk;
-    };
+    if (!A && !B) return 0;
+    if (!A) return 1;
+    if (!B) return -1;
 
-    return score(B) - score(A);
+    return new Date(B.created_at).getTime() - new Date(A.created_at).getTime();
   });
 
   const selectedStudent = students.find(
     (s) => s.id === selectedProfileId
   );
+
+  // 실제 발음 평가(pronunciation_accuracy)가 있으면 그걸 쓰고, 없는(마이그레이션 이전)
+  // 기록만 예전처럼 단어 일치율(accuracy)로 대신한다 — "발음 불안" 딱지가 실제로는 단어
+  // 일치율 기준이었던 것을 데이터가 쌓이는 대로 진짜 발음 기준으로 옮겨가기 위함.
+  const pronunciationValue = (x: any) => x?.pronunciation_accuracy ?? x?.accuracy;
 
   const getStatusMeta = (x: any) => {
     if (!x)
@@ -251,7 +254,7 @@ export default function TeacherPage() {
         cls: "bg-red-100 text-red-700",
         Icon: CircleAlert,
       };
-    if (x.accuracy < 75)
+    if (pronunciationValue(x) < 75)
       return {
         label: "발음 불안",
         cls: "bg-amber-100 text-amber-700",
@@ -404,7 +407,7 @@ export default function TeacherPage() {
                           label: "이해 부족",
                           cls: "bg-red-100 text-red-700",
                         });
-                      if (latest.accuracy < 75)
+                      if (pronunciationValue(latest) < 75)
                         items.push({
                           label: "발음 불안",
                           cls: "bg-amber-100 text-amber-700",
@@ -414,7 +417,7 @@ export default function TeacherPage() {
                           label: "속도 부족",
                           cls: "bg-amber-100 text-amber-700",
                         });
-                      if (latest.comprehension >= 80 && latest.accuracy >= 80)
+                      if (latest.comprehension >= 80 && pronunciationValue(latest) >= 80)
                         items.push({
                           label: "안정",
                           cls: "bg-emerald-100 text-emerald-700",
@@ -578,7 +581,7 @@ export default function TeacherPage() {
                             </span>
                           </div>
 
-                          <div className="mt-3 grid grid-cols-3 gap-3">
+                          <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
                             <div className="rounded-xl border border-slate-200 p-3">
                               <div className="flex items-center gap-1 text-xs text-slate-500">
                                 <Timer className="h-3.5 w-3.5" aria-hidden={true} />
@@ -594,13 +597,33 @@ export default function TeacherPage() {
                             <div className="rounded-xl border border-slate-200 p-3">
                               <div className="flex items-center gap-1 text-xs text-slate-500">
                                 <Target className="h-3.5 w-3.5" aria-hidden={true} />
-                                정확도
+                                읽기 정확도
                               </div>
                               <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
                                 {Math.round(d.accuracy)}
                                 <span className="ml-0.5 text-xs font-normal text-slate-400">
                                   %
                                 </span>
+                              </p>
+                            </div>
+                            <div className="rounded-xl border border-slate-200 p-3">
+                              <div className="flex items-center gap-1 text-xs text-slate-500">
+                                <Mic className="h-3.5 w-3.5" aria-hidden={true} />
+                                발음 정확도
+                              </div>
+                              <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900">
+                                {d.pronunciation_accuracy != null ? (
+                                  <>
+                                    {Math.round(d.pronunciation_accuracy)}
+                                    <span className="ml-0.5 text-xs font-normal text-slate-400">
+                                      %
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="text-sm font-normal text-slate-300">
+                                    이전 기록엔 없음
+                                  </span>
+                                )}
                               </p>
                             </div>
                             <div className="rounded-xl border border-slate-200 p-3">
@@ -627,13 +650,13 @@ export default function TeacherPage() {
                             {d.comprehension < 70 && (
                               <p>내용을 제대로 이해하지 못하고 있습니다</p>
                             )}
-                            {d.accuracy < 75 && (
+                            {pronunciationValue(d) < 75 && (
                               <p>발음 정확도가 낮아 소리 기반이 약합니다</p>
                             )}
                             {d.wpm < 80 && (
                               <p>읽기 속도가 느려 전체 흐름이 끊깁니다</p>
                             )}
-                            {d.comprehension >= 80 && d.accuracy >= 80 && (
+                            {d.comprehension >= 80 && pronunciationValue(d) >= 80 && (
                               <p>전반적으로 안정적인 읽기 상태입니다</p>
                             )}
                           </div>

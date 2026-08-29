@@ -96,12 +96,31 @@ All responses must be in Korean.
 
 Focus on meaning and key events, not wording.
 
-Scoring:
-90-100: Main idea + most key events
-75-89: Main idea + some key details
-60-74: Partial understanding
-40-59: Very limited recall
-Below 40: Minimal understanding
+Scoring bands (use the FULL width of the matching band — do NOT default to the
+lower boundary number just because the recall clears that band):
+- 90-100: Main idea + most key events. Score near 90 if only the main idea and
+  the most important events are covered; score near 100 the more additional
+  correct events/details are also recalled.
+- 75-89: Main idea + some key details. Score near 75 if just a couple of details
+  are present beyond the main idea; score near 89 the more of the key details
+  are correctly recalled.
+- 60-74: Partial understanding of the main idea, missing several key events.
+- 40-59: Very limited recall — only fragments are correct.
+- Below 40: Minimal understanding.
+
+Judge how many distinct key events/details are correctly recalled and place the
+score accordingly across the band's full range, not just at its edges.
+
+Calibration examples (illustrative only, unrelated to the passage below — use
+these to see how specific, non-round numbers should look in practice):
+- Main idea + 4 of 5 key events, missing only a minor detail -> 87 (not 90)
+- Main idea + 2 of 5 key events -> 79 (not 75 or 80)
+- Main idea only, no supporting events -> 68 (not 60 or 75)
+- Everything correct except one trivial detail (a number, a name) -> 96 (not 90 or 100)
+
+Avoid landing on an exact multiple of 5 or 10 unless the recall genuinely sits at
+a natural extreme (0 for no understanding at all, 100 for a flawless retelling).
+Most real answers fall between the clean numbers — your score should too.
 `
             },
             {
@@ -165,9 +184,14 @@ Rules:
         summary: "분석 실패"
       });
     }
-    const score =
+    const rawScore =
       typeof parsed.score === "number" ? parsed.score : 60;
 
+    // GPT가 프롬프트에 적힌 구간 경계값(75, 90) 자체를 대표값으로 찍어버리는 경향이 있어
+    // "75-89: 세부까지 이해"/"90-100: 대부분 이해"를 받은 아이도 실제로는 75/90에 몰려서
+    // 이해도가 부당하게 낮게 보였다. 두 상위 구간은 후하게 재매핑해 이 편향을 상쇄한다.
+    const score =
+      rawScore >= 90 ? 100 : rawScore >= 75 ? 90 : rawScore;
 
     return NextResponse.json({
       recallText,

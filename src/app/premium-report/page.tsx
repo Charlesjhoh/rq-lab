@@ -22,6 +22,16 @@ import {
   Download,
   MessageCircle
 } from "lucide-react";
+import {
+  getCopyBucket,
+  pickReadingCoach,
+  pickLearningAdvice,
+  pickRoadmap,
+  pickTailoredMethod,
+  pickTodayFocus,
+  pickNextGoal,
+  pickBookReason,
+} from "@/lib/premium-report-copy";
 
 // ==========================================
 // 1. DYNAMIC THEME SYSTEM CONFIGURATION
@@ -138,139 +148,6 @@ function getStageInfo(ar: number, wpm: number): StageInfo {
   } else {
     return { stage: "Matured Readers", usGrade: "G5~G8+", atos: "5.5 - 8.0+", lexile: "830L - 1050L+" };
   }
-}
-
-// ==========================================
-// 3. HOME-PRACTICE ROADMAP GENERATOR (V1.1)
-// ==========================================
-type RoadmapTask = {
-  week: string;
-  title: string;
-  desc: string;
-};
-
-function generateDynamicRoadmap(ar: number, wpm: number, accuracy: number, readerType: string): RoadmapTask[] {
-  if (accuracy < 90) {
-    return [
-      {
-        week: "Week 1",
-        title: "같은 책을 2번 읽기",
-        desc: "한 번 읽어서 단어 의미가 친숙해진 상태에서 다시 정독하며 누락된 단어와 글자를 꼼꼼히 확인합니다."
-      },
-      {
-        week: "Week 2",
-        title: "소리 내어 천천히 정독하기",
-        desc: "조금 느린 속도라도 괜찮으니 마침표와 단어의 끝맺음까지 눈으로 짚으며 소리 내어 꼼꼼히 읽습니다."
-      },
-      {
-        week: "Week 3",
-        title: "문장 끊지 않고 읽기 연습",
-        desc: "한 문장을 중간에 멈추거나 더듬거리지 않고, 하나의 온전한 흐름으로 끝까지 연결하여 발화해 봅니다."
-      },
-      {
-        week: "Week 4",
-        title: "새 책보다 복습하기",
-        desc: "지난 3주간 다루었던 친숙한 텍스트로 돌아와 마지막 점검을 하며 독서 자신감과 성공 경험을 채워갑니다."
-      }
-    ];
-  }
-
-  if (wpm < 85) {
-    return [
-      {
-        week: "Week 1",
-        title: "원어민 가이드 리스닝 앤 리드",
-        desc: "쉬운 레벨의 원서를 골라 가이드 오디오를 귀로 들으며 시선과 입이 그 템포를 자연스럽게 쫓아가도록 합니다."
-      },
-      {
-        week: "Week 2",
-        title: "손가락으로 글자 밀며 읽기",
-        desc: "머뭇거리는 시선 지체를 없애기 위해 손가락이나 펜 끝으로 단어 흐름을 가볍게 리드하며 독서 속도를 높입니다."
-      },
-      {
-        week: "Week 3",
-        title: "아는 단어 즉각 발화 세션",
-        desc: "눈에 자주 익은 단어(Sight Words)는 한 단어씩 쪼개 읽지 않고 통으로 바로 인지하며 자연스럽게 미끄러집니다."
-      },
-      {
-        week: "Week 4",
-        title: "읽은 내용 한 문장으로 말하기",
-        desc: "낭독을 무사히 마친 후, 전체 흐름에서 가장 인상 깊었던 장면을 한국어나 한 문장의 영어로 자유롭게 이야기해 봅니다."
-      }
-    ];
-  }
-
-  return [
-    {
-      week: "Week 1",
-      title: "같은 책을 2번 읽기",
-      desc: "첫 독서 시 발견하지 못한 작은 서사 구조와 숨겨진 뉘앙스 표현들을 두 번째 정독 과정에서 완벽하게 흡수합니다."
-    },
-    {
-      week: "Week 2",
-      title: "문장 끊지 않고 읽기",
-      desc: "구절 단위의 청킹(Chunking) 흐름을 타며 호흡을 놓치거나 인위적으로 분할하지 않고 한 호흡으로 완독합니다."
-    },
-    {
-      week: "Week 3",
-      title: "읽은 내용 한 문장으로 말하기",
-      desc: "줄거리를 길게 늘어놓지 않고, 핵심 인물과 갈등 중심의 단 하나의 임팩트 있는 구문으로 가볍게 재진술해 봅니다."
-    },
-    {
-      week: "Week 4",
-      title: "새 책보다 익숙한 책 복습하기",
-      desc: "이전 난이도의 책을 완벽히 유창하고 흐트러짐 없이 읽어내는 최종 시뮬레이션을 완료하며 최상의 리딩 템포를 확보합니다."
-    }
-  ];
-}
-
-// ==========================================
-// 4. DYNAMIC STUDY METHOD GUIDE SYSTEM (V1.1)
-// ==========================================
-type TailoredMethod = {
-  focus: string;
-  objective: string;
-  steps: string[];
-  tips: string;
-};
-
-function generateTailoredMethod(ar: number, wpm: number, accuracy: number, readerType: string): TailoredMethod {
-  if (accuracy < 90) {
-    return {
-      focus: "읽기 흐름과 정확성의 밸런스 매칭",
-      objective: "대충 눈대중으로 넘기며 단어를 가볍게 추측하는 습관을 통제하고 인지 정확성 높이기",
-      steps: [
-        "처음 읽는 책은 반드시 손가락으로 단어 하나하나를 정밀하게 짚어가며 글자 경계를 인지하기",
-        "소리 내어 정독할 때 오독이나 누락이 발생하면, 다그치지 말고 한 걸음 멈춘 뒤 차분히 다시 시작하기",
-        "이미 읽은 비교적 친숙하고 쉬운 동화책 위주로 반복해서 편안하게 소리 내어 읽기 연습"
-      ],
-      tips: "지금은 서둘러 속도를 내거나 어려운 단어에 맞닥뜨리는 것보다, 천천히 한 문장을 처음부터 끝까지 완전하게 읽는 소중한 연습 과정이 필요합니다."
-    };
-  }
-
-  if (wpm < 85) {
-    return {
-      focus: "자연스러운 리딩 플로우와 자신감 회복",
-      objective: "해독 정확성을 탄탄히 고수한 상태에서 머뭇거림을 줄이고 자연스러운 가속 패턴 장착하기",
-      steps: [
-        "원어민 보이스 가이드가 있는 쉬운 레벨의 낭독 음성을 먼저 충분히 귀로 들으며 템포 체감하기",
-        "실수를 두려워하지 않고, 한두 단어 모르는 표현이 지나가더라도 호흡을 끝까지 이어 완주해 보기",
-        "시간을 정해두거나 조급하게 몰아붙이기보다 3~5줄 내외의 한 페이지 단락을 정성스레 끝맺기"
-      ],
-      tips: "단어를 읽는 데 주저함이 길어지는 편이므로, 자신에게 친숙하고 쉬운 단계의 레벨 원서를 지속 노출하여 성공 경험을 쌓아주는 것이 핵심입니다."
-    };
-  }
-
-  return {
-    focus: "독서 흐름 유지력과 정교한 문맥 이해",
-    objective: "이미 구축된 안정적인 기틀 위에서 어휘 뉘앙스를 자연스럽게 소화하고 독서 성취감 극대화하기",
-    steps: [
-      "문장이 끝나는 마침표(.)에서는 충분히 여유롭게 쉬어 가고, 쉼표(,) 간격을 존중하며 낭독 템포 튜닝하기",
-      "글자 위주의 독해 수준을 한 단계 더 뛰어넘어, 대화문 속 캐릭터에 어조와 감정을 자연스럽게 담아보기",
-      "주차별로 정독을 마친 에피소드의 큰 줄거리를 머릿속으로 이미지화하며 한국어로 조근조근 나누기"
-    ],
-    tips: "현재 리스크 관리가 훌륭한 안정적 독자입니다. 섣불리 무리해서 어려운 책으로 다이렉트 도약하기보다는, 현재 독서 난이도에서 깊이를 다지는 활동을 적극 권장합니다."
-  };
 }
 
 // ==========================================
@@ -393,6 +270,12 @@ function ClientPart() {
   const [unlockError, setUnlockError] = useState<string | null>(null);
 
   const [isMounted, setIsMounted] = useState(false);
+
+  // 결제 성공 화면에서 넘어온 경우(?unlock=1) 보유 크레딧이 있으면 버튼 클릭 없이
+  // 바로 소진해서 리포트를 열어준다 — 방금 결제한 사람에게 한 번 더 클릭을 시키지 않기 위함.
+  const autoUnlockRequested = searchParams.get("unlock") === "1";
+  const [autoUnlockChecked, setAutoUnlockChecked] = useState(!autoUnlockRequested);
+  const autoUnlockAttemptedRef = useRef(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -542,14 +425,15 @@ function ClientPart() {
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
       heightLeft -= pageHeight;
 
-      while (heightLeft >= 0) {
+      while (heightLeft > 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
         heightLeft -= pageHeight;
       }
 
-      pdf.save(`${studentName}_프리미엄_리딩_종합_리포트.pdf`);
+      const safeStudentName = (studentName || "학생").replace(/[\\/:*?"<>|]/g, "").trim() || "학생";
+      pdf.save(`${safeStudentName}_프리미엄_리딩_종합_리포트.pdf`);
     } catch (error) {
       console.error('PDF 다운로드 에러:', error);
       alert('PDF 변환 도중 오류가 발생했습니다.');
@@ -602,11 +486,32 @@ function ClientPart() {
     }
   };
 
+  useEffect(() => {
+    if (loading || autoUnlockChecked || autoUnlockAttemptedRef.current) return;
+
+    if (!result || result.is_unlocked || remainingCredits <= 0) {
+      setAutoUnlockChecked(true);
+      return;
+    }
+
+    autoUnlockAttemptedRef.current = true;
+    handleUnlockWithCredit().finally(() => setAutoUnlockChecked(true));
+  }, [loading, result, remainingCredits, autoUnlockChecked]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50/50 flex flex-col items-center justify-center p-6">
         <div className="animate-spin rounded-full h-10 w-10 border-2 border-slate-900 border-t-transparent mb-4" />
         <p className="text-sm font-semibold text-slate-500 tracking-tight">AI가 고해상도 프리미엄 리포트를 연동 중입니다...</p>
+      </div>
+    );
+  }
+
+  if (autoUnlockRequested && !autoUnlockChecked) {
+    return (
+      <div className="min-h-screen bg-slate-50/50 flex flex-col items-center justify-center p-6">
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-slate-900 border-t-transparent mb-4" />
+        <p className="text-sm font-semibold text-slate-500 tracking-tight">결제가 확인되어 리포트를 자동으로 여는 중입니다...</p>
       </div>
     );
   }
@@ -673,93 +578,33 @@ function ClientPart() {
   const accuracy = Math.round(result.accuracy || 0);
   const comprehension = Math.round(result.comprehension || 0);
   const ar = Number(result.final_ar || 0).toFixed(1);
+  // pronunciation_accuracy는 2026-08-28에 컬럼이 생겨서, 그 이전에 치른 테스트 결과는
+  // null이다 — 0점과 구분해야 하므로 존재 여부를 따로 판별한다.
+  const pronunciationAccuracy =
+    result.pronunciation_accuracy != null ? Math.round(result.pronunciation_accuracy) : null;
 
   const rawReaderType = (result.reader_type || "Developing Reader").trim();
   const theme = THEMES[rawReaderType] || DEFAULT_THEME;
 
   const stageInfo = getStageInfo(result.final_ar || 0, wpm);
-  const dynamicRoadmap = generateDynamicRoadmap(result.final_ar || 0, wpm, accuracy, rawReaderType);
 
   const userAr = Number(result.final_ar || 0);
   const filteredRecommendations = books
     .filter((b) => b.ar_min <= userAr + 0.5 && b.ar_max >= userAr - 0.5)
     .slice(0, 3);
 
-  const tailoredMethod = generateTailoredMethod(result.final_ar || 0, wpm, accuracy, rawReaderType);
+  // resultId를 시드로 버킷 내 변형 문구를 결정적으로 선택 — 같은 리포트는 새로고침해도
+  // 항상 같은 문구가 나오지만, 같은 버킷의 다른 학생끼리는 문구가 겹치지 않는다.
+  const copySeed = String(result.id || resultId || "seed");
+  const copyBucket = getCopyBucket(accuracy, wpm);
 
-  const getTodayFocus = () => {
-    if (accuracy < 90) {
-      return {
-        title: "오늘의 Reading Focus: 정확도 향상과 꼼꼼한 어휘 마감",
-        items: ["차분하고 정확하게 읽기", "문장의 끝까지 소리 내어 확인하기", "조급하지 않은 리스크 컨트롤 안착"]
-      };
-    }
-    if (wpm < 85) {
-      return {
-        title: "오늘의 Reading Focus: 유창한 리딩 플로우와 자신감 고무",
-        items: ["Reading Flow 유지하기", "중간 더듬거림 극복하기", "쉬운 책을 통해 리딩 템포 익히기"]
-      };
-    }
-    return {
-      title: "오늘의 Reading Focus: 정교한 어휘 소화 및 탄탄한 유창성 밸런스",
-      items: ["Reading Confidence 배가시키기", "자연스러운 문장 호흡 고수하기", "다양한 표현의 정량 정독 확장"]
-    };
-  };
-  const todayFocus = getTodayFocus();
-
-  const getNextReadingGoal = () => {
-    if (accuracy < 90) {
-      return "읽기 속도는 자연스럽게 유지하면서, 글자 끝맺음과 정확도를 조금만 더 짚어가며 높여보세요.";
-    }
-    if (wpm < 85) {
-      return "현재의 뛰어난 정확도는 확실하게 고수하면서, 주저하지 말고 물이 흐르듯 조금 더 연결해서 읽어보세요.";
-    }
-    return "현재의 훌륭한 속도와 완벽한 정확도를 조화롭게 유지하면서, 문장 사이의 마침표와 쉼표를 감각적으로 호흡하며 읽어보세요.";
-  };
-  const nextReadingGoal = getNextReadingGoal();
-
-  const getBookReason = (idx: number) => {
-    const reasons = [
-      "현재 읽기 속도와 흐름을 방해하지 않는 매우 적절한 난이도의 도서입니다.",
-      "문장을 무리하게 끊지 않고 자연스럽게 이어서 읽는 유창성 연습에 아주 좋은 단계입니다.",
-      "익숙한 표현이 가득하여 반복적으로 낭독하며 자신감을 축적하기에 최적의 책입니다."
-    ];
-    return reasons[idx % reasons.length];
-  };
-
-  const getReadingCoachData = () => {
-    if (accuracy < 90) {
-      return {
-        strength: "텍스트에 나타난 전체적인 서사 맥락을 읽어내려는 자기 주도적이고 긍정적인 몰입도가 돋보입니다.",
-        focus: "눈이 가독 속도보다 먼저 앞서가며 단어의 미세한 문법 어미나 세부 인식을 대충 유추해 넘어가는 경향을 조율해야 합니다.",
-        practice: "이번 주에는 새 책보다 이미 한 번 편하게 통독한 원서 중에서 3줄 내외의 페이지를 골라, 마침표까지 완전하게 소리 내어 찍어 읽도록 다정하게 피드백해 주시는 것을 권장합니다."
-      };
-    }
-    if (wpm < 85) {
-      return {
-        strength: "문맥 속 단어 하나하나의 철자 형태를 틀림없이 파악해 내는 완성도 높고 빈틈없는 인지 집중력이 매우 훌륭합니다.",
-        focus: "새롭거나 생소한 단어를 만났을 때 다음 문장으로 물 흐르듯 가볍게 통과하지 못하고, 지나치게 멈칫거리며 속도가 지체되는 편입니다.",
-        practice: "아이에게 책 읽기 시간을 체크하며 몰아세우는 타이밍 훈련을 일절 금지하시고, 이미 내용을 완전히 숙지하고 있는 가장 좋아하는 원서를 라디오 음성처럼 술술 노래하듯 읽어보는 안도감 중심의 환경을 열어주세요."
-      };
-    }
-    return {
-      strength: "읽기 속도(WPM)와 해독 디코딩 안정성이 대단히 고른 밸런스로 연계되어 있어 막힘 없고 편안한 완성형 구어 리딩 흐름을 갖추고 있습니다.",
-      focus: "단순히 기계적으로 글자를 통과해 읽는 패턴을 극복하고, 구두점(마침표, 쉼표)을 충분히 즐기며 대화문 속에 캐릭터의 감정과 연음 강세를 실어 입체감을 부여해 볼 단계입니다.",
-      practice: "아이가 독립적으로 스스로 리딩하는 규칙적인 습관을 꾸준히 격려해 주시고, 다 읽고 난 후에는 '오늘 읽은 내용 중 가장 깜짝 놀랄 만한 재미난 장면이 뭐였어?'하고 가벼운 스피킹 대화로 독서 여정을 마무리해 보세요."
-    };
-  };
-  const readingCoach = getReadingCoachData();
-
-  const getLearningAdvice = () => {
-    if (accuracy < 90) {
-      return "현재 학습 수준 영역에서는 새로운 어려운 원서를 늘려나가는 무리한 접근보다, 현재 수월하게 이해할 수 있는 쉬운 책을 여러 차례 '반복해서 깊게 읽기(Repeated Reading)'를 수행하는 것이 실질적인 독서 정확성을 가장 빠르고 편안하게 안정시키는 비결입니다.";
-    }
-    if (wpm < 85) {
-      return "지금 단계에서는 리딩 속도를 인위적으로 강요하는 질주 훈련보다, 아이가 충분한 정서적 자신감을 갖출 수 있도록 AR 수치를 한두 레벨 가볍게 낮추어 한결 부드럽고 수월하게 미끄러지듯 완독해 내는 연속적 성취 경험을 충분히 누리도록 이끌어주시는 것이 우선 과제입니다.";
-    }
-    return "현재 독서의 전반적인 지표 밸런스가 대단히 우수하고 안정적이므로, 현재의 정독 습관을 흔들림 없이 고수한 채 챕터 분량이 조금 더 긴 단계적 책이나 호흡이 긴 옴니버스 형태의 신선한 원서 스케일 업에 도전하셔도 아주 훌륭한 촉진제가 될 것입니다.";
-  };
-  const learningAdvice = getLearningAdvice();
+  const dynamicRoadmap = pickRoadmap(copySeed, copyBucket);
+  const tailoredMethod = pickTailoredMethod(copySeed, copyBucket);
+  const todayFocus = pickTodayFocus(copySeed, copyBucket);
+  const nextReadingGoal = pickNextGoal(copySeed, copyBucket);
+  const getBookReason = (idx: number) => pickBookReason(copySeed, idx);
+  const readingCoach = pickReadingCoach(copySeed, copyBucket);
+  const learningAdvice = pickLearningAdvice(copySeed, copyBucket);
 
   return (
     <div className="min-h-screen bg-slate-50/50 py-12 px-4 sm:px-6 lg:px-8 font-sans text-slate-900 antialiased">
@@ -852,6 +697,65 @@ function ClientPart() {
           </div>
         </section>
 
+        {/* ================= READING DNA SECTION (DOM 불일치 파괴 설계 차단) =================
+             Hero 바로 다음으로 배치 — 애니메이션되는 원형 게이지가 리포트의 첫인상을
+             결정하는 핵심 요소라, 스크롤 없이 바로 보이도록 위로 올렸다. */}
+        <section className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-2.5">
+              <Gauge className="w-5 h-5 text-slate-700" />
+              <h2 className="text-lg font-bold text-slate-800 tracking-tight">실시간 종합 Reading DNA 지표</h2>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+            <CircularGauge
+              percentage={Math.min((wpm / 180) * 100, 100)}
+              color={getDynamicGaugeColor(Math.min((wpm / 180) * 100, 100))}
+              label="Reading Speed"
+              displayValue={`${wpm} WPM`}
+              isMounted={isMounted}
+            />
+            <CircularGauge
+              percentage={accuracy}
+              color={getDynamicGaugeColor(accuracy)}
+              label="Reading Accuracy"
+              displayValue={`${accuracy}%`}
+              isMounted={isMounted}
+            />
+            {pronunciationAccuracy !== null ? (
+              <CircularGauge
+                percentage={pronunciationAccuracy}
+                color={getDynamicGaugeColor(pronunciationAccuracy)}
+                label="Pronunciation Accuracy"
+                displayValue={`${pronunciationAccuracy}%`}
+                isMounted={isMounted}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-5 text-center">
+                <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">
+                  Pronunciation Accuracy
+                </span>
+                <span className="text-xs text-slate-400 mt-2">이전 기록엔 없어요</span>
+              </div>
+            )}
+            <CircularGauge
+              percentage={comprehension}
+              color={getDynamicGaugeColor(comprehension)}
+              label="Comprehension"
+              displayValue={`${comprehension}%`}
+              isMounted={isMounted}
+            />
+            <CircularGauge
+              percentage={Math.min((Number(ar) / 6) * 100, 100)}
+              color={getDynamicGaugeColor(Math.min((Number(ar) / 6) * 100, 100))}
+              label="Estimated AR Level"
+              displayValue={`AR ${ar}`}
+              isMounted={isMounted}
+            />
+          </div>
+        </section>
+
         {/* ================= NEXT READING GOAL ================= */}
         <section className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
           <div className="flex items-center gap-2.5 mb-4">
@@ -889,47 +793,6 @@ function ClientPart() {
               <span className="text-[10px] font-bold text-slate-400 tracking-wider block uppercase mb-1">Lexile Measure</span>
               <span className="text-sm font-black text-slate-800 tracking-tight">{stageInfo.lexile}</span>
             </div>
-          </div>
-        </section>
-
-        {/* ================= READING DNA SECTION (DOM 불일치 파괴 설계 차단) ================= */}
-        <section className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-2.5">
-              <Gauge className="w-5 h-5 text-slate-700" />
-              <h2 className="text-lg font-bold text-slate-800 tracking-tight">실시간 종합 Reading DNA 지표</h2>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <CircularGauge
-              percentage={Math.min((wpm / 180) * 100, 100)}
-              color={getDynamicGaugeColor(Math.min((wpm / 180) * 100, 100))}
-              label="Reading Speed"
-              displayValue={`${wpm} WPM`}
-              isMounted={isMounted}
-            />
-            <CircularGauge
-              percentage={accuracy}
-              color={getDynamicGaugeColor(accuracy)}
-              label="Accuracy"
-              displayValue={`${accuracy}%`}
-              isMounted={isMounted}
-            />
-            <CircularGauge
-              percentage={comprehension}
-              color={getDynamicGaugeColor(comprehension)}
-              label="Comprehension"
-              displayValue={`${comprehension}%`}
-              isMounted={isMounted}
-            />
-            <CircularGauge
-              percentage={Math.min((Number(ar) / 6) * 100, 100)}
-              color={getDynamicGaugeColor(Math.min((Number(ar) / 6) * 100, 100))}
-              label="Estimated AR Level"
-              displayValue={`AR ${ar}`}
-              isMounted={isMounted}
-            />
           </div>
         </section>
 

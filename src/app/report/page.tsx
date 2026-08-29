@@ -18,6 +18,7 @@ import {
   Sparkles,
   ArrowRight,
 } from "lucide-react";
+import GrowthTrendCharts from "@/components/ui/GrowthTrendCharts";
 
 function ClientPart() {
   const router = useRouter();
@@ -170,6 +171,9 @@ function ClientPart() {
             </div>
           </div>
         )}
+
+        {/* ✅ 성장 추이 (무료) */}
+        <GrowthTrendCharts results={results} />
 
         {/* ✅ CTA */}
         <div className="overflow-hidden rounded-3xl border border-amber-200 bg-amber-50 shadow-sm">

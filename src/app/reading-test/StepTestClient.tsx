@@ -468,7 +468,11 @@ export default function StepTestClient({
     // 서버 durationSec은 Azure가 인식한 발화 구간 길이만 합산해서, 단어 사이 의도적인
     // 정적/쉬는 시간이 통째로 빠져 WPM이 부풀려진다. 녹음 시작~종료 실제 경과 시간(클라이언트
     // wall-clock)을 우선 쓰고, 어떤 이유로든 못 구했을 때만 서버 값으로 대체한다.
-    const durationSec = Math.max(1, readingDurationSecRef.current ?? pronunData.durationSec ?? 1);
+    // 다만 "카운트다운이 끝나고 녹음은 시작됐는데 아이가 첫 단어를 말하기 전까지의 무음"은
+    // 읽기 속도와 무관하므로, 서버가 Azure의 첫 인식 결과 offset으로 계산해 준 leadingSilenceSec
+    // 만큼만 wall-clock에서 덜어낸다(중간 쉬는 시간은 여전히 그대로 반영됨).
+    const rawDurationSec = readingDurationSecRef.current ?? pronunData.durationSec ?? 1;
+    const durationSec = Math.max(1, rawDurationSec - (pronunData.leadingSilenceSec ?? 0));
     const recognizedText = pronunData.recognizedText || "";
     // wrongWords는 못다 읽은 뒷부분까지 포함된 전체 목록 — 점수(WPM/커버리지/정확도) 계산에는
     // 이 값을 그대로 써야 안 읽은 만큼 정확히 감점된다. missedWords는 "실제로 시도했지만 놓친
@@ -586,6 +590,7 @@ export default function StepTestClient({
           student_id: profile?.student_id,
           wpm: safeWpm,
           accuracy: safeAccuracy,
+          pronunciation_accuracy: pronunciationAccuracy,
           comprehension: comprehensionScore,
           final_ar: finalAR,
           reading_level: readingLevel,
@@ -1179,7 +1184,7 @@ export default function StepTestClient({
             {/* FEEDBACK FORM */}
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-100 px-6 py-5 sm:px-10">
-                <p className="text-base font-semibold text-slate-900">10초 피드백</p>
+                <p className="text-base font-semibold text-slate-900">설문조사</p>
                 <p className="mt-1 text-sm text-slate-500">
                   더 나은 서비스를 위해 의견을 들려주세요.
                 </p>
@@ -1240,6 +1245,11 @@ export default function StepTestClient({
                     className="mt-2 h-24 w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   />
                 </div>
+
+                <p className="text-xs leading-relaxed text-slate-400">
+                  남겨주신 내용 중 상담이 필요해 보이면, 가입하신 계정 이메일로 저희가 상담
+                  메일을 보내드립니다.
+                </p>
 
                 <button
                   onClick={async () => {
