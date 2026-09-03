@@ -71,12 +71,13 @@ export default function HomePage() {
           .maybeSingle();
 
         // 2. 저장할 데이터 생성 (기존 role이 있다면 그대로 유지, 없으면 생략)
+        // NOTE: profiles 테이블에는 updated_at 컬럼이 없다. 넣으면 PGRST204로 저장 자체가
+        // 실패한다(온보딩 화면의 upsert도 이 컬럼을 쓰지 않음).
         const updateData: Record<string, any> = {
           id: currentUserId,
           parent_name: parentName.trim(),
           student_name: studentName.trim(),
           birth: birth.trim(),
-          updated_at: new Date().toISOString(),
         };
 
         // 기존에 role 권한이 존재하는 경우 role 컬럼 값을 보존
