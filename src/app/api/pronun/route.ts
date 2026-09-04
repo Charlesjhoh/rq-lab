@@ -121,6 +121,8 @@ export async function POST(req: NextRequest) {
     // -ed / -s 어미 누락으로 판정된 단어 -> 마지막 음소 점수. ASR은 어미를 빼먹어도
     // 원문 단어로 인식해버려 "놓친 단어"로는 안 잡히므로 별도로 모은다.
     const endingDropScores = new Map<string, number>();
+    // TEMP 디버그: -s/-ed 및 기능어의 단어점수+음소점수 덤프 (감지 임계값 튜닝용)
+    const phonemeDebug: { w: string; score: number | null; ph: number[] }[] = [];
     // Azure가 인식한 단어를 원문 순서대로 누적. 연속 모드에서는 Omission을 안 내보내므로
     // "빼먹은 단어"는 아래 LCS 전사본 정렬로 잡고, 여기 값은 "읽긴 읽었다"의 근거로만 쓴다.
     const azureWords: { w: string; errorType: string; score: number | null }[] = [];
@@ -212,6 +214,18 @@ export async function POST(req: NextRequest) {
                 const looksInflected =
                   (endsEd || endsInflectionalS) &&
                   !SUFFIX_LOOKALIKES.has(cleanedWord);
+                if (
+                  looksInflected ||
+                  ["the", "a", "an", "its", "of", "to", "in", "on"].includes(
+                    cleanedWord
+                  )
+                ) {
+                  phonemeDebug.push({
+                    w: cleanedWord,
+                    score: effectiveScore,
+                    ph: phonemeScores,
+                  });
+                }
                 if (
                   looksInflected &&
                   phonemeScores.length >= 3 &&
@@ -494,12 +508,14 @@ export async function POST(req: NextRequest) {
     const durationSec = Math.max(1, totalDuration / 10000000);
     const leadingSilenceSec = Math.max(0, (leadingSilenceTicks ?? 0) / 10000000);
 
-    // TEMP 디버그: 치환/삽입 판정 검증용. 확인 후 제거.
+    // TEMP 디버그: 치환/삽입/어미 판정 검증용. 확인 후 제거.
     console.log(
       "[pronun] align2",
       JSON.stringify({
         refWordCount: R,
         readCount: matchCount,
+        readingAccuracy,
+        pronunciationScore,
         missed: uniqueMissed,
         substitutions: uniqueSubstitutions,
         endingDrops: uniqueEndingDrops,
@@ -507,6 +523,7 @@ export async function POST(req: NextRequest) {
         insertions: ops
           .filter((o) => o.t === "ins")
           .map((o) => spokenWords[o.sp!]),
+        phonemeDebug,
         recognized: collectedText.trim(),
       })
     );
