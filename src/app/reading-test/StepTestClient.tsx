@@ -483,6 +483,8 @@ export default function StepTestClient({
     // ASR은 -ed/-s 어미를 빼먹어도 원문 단어로 인식해 "놓친 단어"로는 안 잡힌다.
     // 서버가 음소 점수로 따로 판정해 준 어미 누락 단어 목록.
     const endingDrops = pronunData.endingDrops || [];
+    // 원문과 다른 단어로 바꿔 읽은 것: [{ from, to }]
+    const substitutions = pronunData.substitutions || [];
 
     // 🔥 [보정 1]: 실제 일치 단어 수 기반의 정밀 WPM 산출
     const correctWordCount = Math.max(0, originalWordCount - wrongWords.length);
@@ -672,6 +674,7 @@ export default function StepTestClient({
       wrong_words: missedWords,
       badPronunciations: badPronunciations,
       endingDrops: endingDrops,
+      substitutions: substitutions,
       levelUp,
     });
 
@@ -1000,9 +1003,36 @@ export default function StepTestClient({
                   </div>
                 )}
 
+                {finalResult?.substitutions?.length > 0 && (
+                  <div>
+                    <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                      <AlertCircle className="h-4 w-4 text-rose-500" aria-hidden={true} />
+                      다른 단어로 바꿔 읽은 단어
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      원문과 다른 단어로 읽었습니다.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {finalResult.substitutions
+                        .slice(0, 5)
+                        .map(
+                          (s: { from: string; to: string }, i: number) => (
+                            <span
+                              key={i}
+                              className="rounded-full bg-rose-50 px-3 py-1 text-sm font-medium text-rose-600"
+                            >
+                              {s.from} → {s.to}
+                            </span>
+                          )
+                        )}
+                    </div>
+                  </div>
+                )}
+
                 {finalResult?.wrong_words?.length === 0 &&
                   finalResult?.badPronunciations?.length === 0 &&
-                  (finalResult?.endingDrops?.length ?? 0) === 0 && (
+                  (finalResult?.endingDrops?.length ?? 0) === 0 &&
+                  (finalResult?.substitutions?.length ?? 0) === 0 && (
                     <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
                       <CheckCircle2 className="h-5 w-5" aria-hidden={true} />
                       읽기와 발음 모두 안정적입니다.

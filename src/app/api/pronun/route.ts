@@ -143,7 +143,9 @@ export async function POST(req: NextRequest) {
                 const numericScore = typeof score === "number" ? score : null;
                 azureWords.push({ w: cleanedWord, errorType, score: numericScore });
 
-                if (errorType === "Omission") return; // 안 읽은 단어 — 발음 채점 대상 아님
+                // Omission(안 읽음) / Insertion(원문에 없는 삽입어)은 원문 발음 채점
+                // 대상이 아니다. 특히 Insertion을 넣으면 점수에 안 넣어야 할 단어가 섞인다.
+                if (errorType === "Omission" || errorType === "Insertion") return;
 
                 // 전체 발음 정확도 집계용: 시도한 단어의 점수를 모은다.
                 // 점수가 안 채워진 심한 오발음(Mispronunciation)은 0점으로 반영한다.
@@ -267,18 +269,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 정렬 연산 시퀀스로 되짚는다: match(둘 다 전진) / del(원문 단어 건너뜀) /
+    // ins(전사본 단어 건너뜀). 이 시퀀스에서 치환(원문 X를 다른 단어 Y로 읽음)을 뽑는다.
+    type AlignOp = { t: "match" | "del" | "ins"; ref?: number; sp?: number };
+    const ops: AlignOp[] = [];
     const matchedRefIdx = new Set<number>();
     {
       let i = 0;
       let k = 0;
-      while (i < R && k < S) {
-        if (refWords[i] === spokenWords[k]) {
+      while (i < R || k < S) {
+        if (i < R && k < S && refWords[i] === spokenWords[k]) {
           matchedRefIdx.add(i);
+          ops.push({ t: "match", ref: i, sp: k });
           i++;
           k++;
-        } else if (dp[i + 1][k] >= dp[i][k + 1]) {
+        } else if (
+          k >= S ||
+          (i < R && dp[i + 1][k] >= dp[i][k + 1])
+        ) {
+          ops.push({ t: "del", ref: i });
           i++;
         } else {
+          ops.push({ t: "ins", sp: k });
           k++;
         }
       }
@@ -291,6 +303,9 @@ export async function POST(req: NextRequest) {
     // 오발음(Mispronunciation)도 "읽긴 읽은 것"이라 커버리지에는 포함한다 — 발음 품질은
     // 아래 발음 정확도 점수에서 따로 반영된다.
     const readRef: boolean[] = new Array(R).fill(false);
+    // Azure가 "제대로 읽었다"(None + 점수 양호)고 본 원문 위치. 아래 치환 판정에서
+    // ASR 노이즈(멀쩡히 읽은 단어를 다르게 전사)를 걸러내는 데 쓴다.
+    const azureGoodRefIdx = new Set<number>();
     {
       let ri = 0;
       for (const aw of azureWords) {
@@ -298,6 +313,9 @@ export async function POST(req: NextRequest) {
         for (let k = ri; k < Math.min(ri + 10, R); k++) {
           if (refWords[k] === aw.w) {
             readRef[k] = true;
+            if (aw.errorType === "None" && (aw.score ?? 0) >= 55) {
+              azureGoodRefIdx.add(k);
+            }
             ri = k + 1;
             break;
           }
@@ -314,14 +332,76 @@ export async function POST(req: NextRequest) {
     const lastReadRef =
       matchedRefIdx.size > 0 ? Math.max(...matchedRefIdx) : -1;
 
+    // ---------------- 치환(바꿔 읽은 단어) 판정 ----------------
+    // 정렬에서 "연속된 비매칭 블록"을 찾아, 그 안의 del(원문 단어)과 ins(전사 단어)를
+    // 순서대로 짝지어 X→Y 치환으로 본다. ASR이 비슷한 발음을 원문 쪽으로 교정해버려
+    // 놓치는 경우가 많으므로, 잡히는 건 "확실히 다른 단어로 읽은" 케이스뿐이다.
+    const editDist = (a: string, b: string): number => {
+      const d = Array.from({ length: a.length + 1 }, (_, x) => [x]);
+      for (let y = 0; y <= b.length; y++) d[0][y] = y;
+      for (let x = 1; x <= a.length; x++) {
+        for (let y = 1; y <= b.length; y++) {
+          d[x][y] =
+            a[x - 1] === b[y - 1]
+              ? d[x - 1][y - 1]
+              : 1 + Math.min(d[x - 1][y], d[x][y - 1], d[x - 1][y - 1]);
+        }
+      }
+      return d[a.length][b.length];
+    };
+    const substitutions: { from: string; to: string }[] = [];
+    const substitutedRefIdx = new Set<number>();
+    {
+      let idx = 0;
+      while (idx < ops.length) {
+        if (ops[idx].t === "match") {
+          idx++;
+          continue;
+        }
+        const dels: number[] = [];
+        const inss: number[] = [];
+        while (idx < ops.length && ops[idx].t !== "match") {
+          if (ops[idx].t === "del") dels.push(ops[idx].ref!);
+          else inss.push(ops[idx].sp!);
+          idx++;
+        }
+        const pairCount = Math.min(dels.length, inss.length);
+        for (let p = 0; p < pairCount; p++) {
+          const refIdx = dels[p];
+          const from = refWords[refIdx];
+          const to = spokenWords[inss[p]];
+          // 기능어가 얽힌 치환(their↔there, to↔too, a↔the)은 대부분 동음이의/ASR 노이즈
+          const eitherFunction =
+            FUNCTION_WORDS.has(from) || FUNCTION_WORDS.has(to);
+          const splitArtifact =
+            from.startsWith(to) || to.startsWith(from) || from.includes(to);
+          const tooSimilar = editDist(from, to) <= 1; // 오탐/사소한 슬립
+          if (
+            refIdx <= lastReadRef &&
+            !readRef[refIdx] && // Azure가 원문 단어를 인식 못 함 = 진짜 안 읽음/다르게 읽음
+            !azureGoodRefIdx.has(refIdx) &&
+            from.length >= 3 &&
+            to.length >= 3 &&
+            !eitherFunction &&
+            !splitArtifact &&
+            !tooSimilar
+          ) {
+            substitutions.push({ from, to });
+            substitutedRefIdx.add(refIdx);
+          }
+        }
+      }
+    }
+
     // wrongWords: 커버리지 계산용 — 안 읽은 단어 전부(못다 읽은 꼬리 포함).
     // missedWords: 화면 표시용 — 마지막으로 읽은 단어 "앞"의 진짜 공백만(꼬리 제외).
+    //   치환으로 이미 잡힌 단어는 "놓친"이 아니라 "바꿔 읽은" 것이므로 여기서 뺀다.
     const wrongWords: string[] = [];
     const missedWords: string[] = [];
     for (let i = 0; i < R; i++) {
       if (readRef[i]) continue;
       wrongWords.push(refWords[i]);
-      if (i < lastReadRef) missedWords.push(refWords[i]);
+      if (i < lastReadRef && !substitutedRefIdx.has(i)) missedWords.push(refWords[i]);
     }
 
     // -ed / -s 어미 누락 단어: 마지막 음소 점수 낮은 순 최대 6개
@@ -337,11 +417,26 @@ export async function POST(req: NextRequest) {
       .slice(0, 6)
       .map(([w]) => w);
     const uniqueWrong = [...new Set(wrongWords)];
+
+    // 바꿔 읽은 단어(원문 X → 실제 Y): 원문 단어 기준 중복 제거, 최대 6개
+    const seenSubFrom = new Set<string>();
+    const uniqueSubstitutions = substitutions
+      .filter((s) => {
+        if (seenSubFrom.has(s.from)) return false;
+        seenSubFrom.add(s.from);
+        return true;
+      })
+      .slice(0, 6);
+    const substitutedWordSet = new Set(uniqueSubstitutions.map((s) => s.from));
+
     // "놓친 단어" = 읽은 구간 안에서 LCS·Azure 어느 쪽도 잡지 못한 원문 단어.
     // 기능어(the/a/at 등)도 아이가 일부러 건너뛰면 실제 읽기 오류이므로 그대로 노출한다.
-    // 단, 1글자(a/i)는 ASR가 워낙 자주 흘려 노이즈라 제외.
+    // 단, 1글자(a/i)는 ASR가 워낙 자주 흘려 노이즈라 제외. 바꿔 읽은 단어도 제외.
     const uniqueMissed = [...new Set(missedWords)].filter(
-      (w) => !uniqueBad.includes(w) && w.length >= 2
+      (w) =>
+        !uniqueBad.includes(w) &&
+        w.length >= 2 &&
+        !substitutedWordSet.has(w)
     );
 
     // ---------------- 읽기 정확도 계산 ----------------
@@ -378,22 +473,44 @@ export async function POST(req: NextRequest) {
     const durationSec = Math.max(1, totalDuration / 10000000);
     const leadingSilenceSec = Math.max(0, (leadingSilenceTicks ?? 0) / 10000000);
 
+    // TEMP 디버그: 치환/삽입 판정 검증용. 확인 후 제거.
+    console.log(
+      "[pronun] align2",
+      JSON.stringify({
+        refWordCount: R,
+        readCount: matchCount,
+        missed: uniqueMissed,
+        substitutions: uniqueSubstitutions,
+        endingDrops: uniqueEndingDrops,
+        badWords: uniqueBad,
+        insertions: ops
+          .filter((o) => o.t === "ins")
+          .map((o) => spokenWords[o.sp!]),
+        recognized: collectedText.trim(),
+      })
+    );
+
     // ---------------- OpenAI 코멘트 생성 ----------------
     let pronunciationComment = "";
 
     if (
       uniqueMissed.length > 0 ||
       uniqueBad.length > 0 ||
-      uniqueEndingDrops.length > 0
+      uniqueEndingDrops.length > 0 ||
+      uniqueSubstitutions.length > 0
     ) {
       const OpenAI = (await import("openai")).default;
       const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
       const prompt = `
       학생의 발음 점수: ${pronunciationScore}점
-      놓치거나 잘못 읽은 단어: ${uniqueMissed.slice(0, 5).join(", ")}
+      놓친 단어: ${uniqueMissed.slice(0, 5).join(", ")}
       발음이 다소 약했던 단어: ${uniqueBad.slice(0, 5).join(", ")}
       -ed / -s 어미를 빠뜨린 단어: ${uniqueEndingDrops.slice(0, 5).join(", ")}
+      다른 단어로 바꿔 읽은 것: ${uniqueSubstitutions
+        .slice(0, 5)
+        .map((s) => `${s.from}→${s.to}`)
+        .join(", ")}
 
       위 결과를 바탕으로 학부모가 이해하기 쉽게 격려와 함께 2~3줄의 학습 가이드를 한국어로 작성해 주세요.
       `;
@@ -415,6 +532,7 @@ export async function POST(req: NextRequest) {
       pronunciationComment,
       badPronunciations: uniqueBad,
       endingDrops: uniqueEndingDrops,
+      substitutions: uniqueSubstitutions,
       wrongWords: uniqueWrong,
       missedWords: uniqueMissed,
       durationSec,
