@@ -251,6 +251,23 @@ export default function StepTestClient({
       if (!selectedLevel || !user?.id) return;
       const lvl = parseFloat(selectedLevel);
 
+      // [DEV 전용] ?dbgPassage=<id> 로 특정 지문 고정 (감지 로직 반복 테스트용)
+      if (
+        process.env.NODE_ENV === "development" &&
+        searchParams.get("dbgPassage")
+      ) {
+        const { data: forced } = await supabase
+          .from("passages")
+          .select("*")
+          .eq("id", Number(searchParams.get("dbgPassage")))
+          .maybeSingle();
+        if (forced) {
+          setPassage(forced);
+          setLastPassageId(forced.id);
+          return;
+        }
+      }
+
       // 1. 유저가 이미 풀어본 지문(passage) 이력 — 지문(content)별 "가장 최근에 푼 시각"까지
       // 확보한다. 다 풀어본 뒤 매번 전체에서 순수 무작위로 재추첨하면 후보 수가 적을 때 같은
       // 지문이 연달아 몰리기 쉬웠다 — 고갈 후에는 가장 오래전에 푼 지문부터 순환하도록 한다.
@@ -852,6 +869,11 @@ export default function StepTestClient({
             <blockquote className="px-6 py-8 text-xl leading-relaxed text-slate-800 sm:px-10">
               {passage.content}
             </blockquote>
+            {process.env.NODE_ENV === "development" && (
+              <p className="px-6 pb-4 text-xs text-slate-400 sm:px-10">
+                [dev] passage id={passage.id} · 고정: ?dbgPassage={passage.id}
+              </p>
+            )}
           </div>
         )}
 
@@ -959,28 +981,6 @@ export default function StepTestClient({
                   </div>
                 )}
 
-                {finalResult?.badPronunciations?.length > 0 && (
-                  <div>
-                    <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                      <AlertCircle className="h-4 w-4 text-red-500" aria-hidden={true} />
-                      발음이 어려운 단어
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                      다음 단어는 발음 정확도가 낮았습니다.
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {finalResult.badPronunciations.slice(0, 5).map((w: string, i: number) => (
-                        <span
-                          key={i}
-                          className="rounded-full bg-red-50 px-3 py-1 text-sm font-medium text-red-600"
-                        >
-                          {w}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {finalResult?.endingDrops?.length > 0 && (
                   <div>
                     <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
@@ -1030,7 +1030,6 @@ export default function StepTestClient({
                 )}
 
                 {finalResult?.wrong_words?.length === 0 &&
-                  finalResult?.badPronunciations?.length === 0 &&
                   (finalResult?.endingDrops?.length ?? 0) === 0 &&
                   (finalResult?.substitutions?.length ?? 0) === 0 && (
                     <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
