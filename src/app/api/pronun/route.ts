@@ -349,7 +349,7 @@ export async function POST(req: NextRequest) {
       }
       return d[a.length][b.length];
     };
-    const substitutions: { from: string; to: string }[] = [];
+    const substitutions: { from: string; to: string; before: string }[] = [];
     const substitutedRefIdx = new Set<number>();
     {
       let idx = 0;
@@ -387,7 +387,12 @@ export async function POST(req: NextRequest) {
             !shortNoise &&
             !splitArtifact
           ) {
-            substitutions.push({ from, to });
+            // 같은 단어(the 등)가 여러 번 나올 때 어느 위치인지 알 수 있게 앞 단어를 붙인다
+            substitutions.push({
+              from,
+              to,
+              before: refIdx > 0 ? refWords[refIdx - 1] : "",
+            });
             substitutedRefIdx.add(refIdx);
           }
         }
@@ -409,12 +414,14 @@ export async function POST(req: NextRequest) {
       (r, i) => r && !substitutedRefIdx.has(i)
     ).length;
 
-    // 바꿔 읽은 단어(원문 X → 실제 Y): 원문 단어 기준 중복 제거, 최대 6개
-    const seenSubFrom = new Set<string>();
+    // 바꿔 읽은 단어(원문 X → 실제 Y): (앞단어+X→Y) 기준 중복 제거, 최대 6개.
+    // 같은 the→a라도 위치가 다르면(to the / watch the) 각각 보여준다.
+    const seenSub = new Set<string>();
     const uniqueSubstitutions = substitutions
       .filter((s) => {
-        if (seenSubFrom.has(s.from)) return false;
-        seenSubFrom.add(s.from);
+        const key = `${s.before}|${s.from}|${s.to}`;
+        if (seenSub.has(key)) return false;
+        seenSub.add(key);
         return true;
       })
       .slice(0, 6);
@@ -472,19 +479,6 @@ export async function POST(req: NextRequest) {
 
     const durationSec = Math.max(1, totalDuration / 10000000);
     const leadingSilenceSec = Math.max(0, (leadingSilenceTicks ?? 0) / 10000000);
-
-    // TEMP 디버그: 다음 검증 라운드 후 제거.
-    console.log(
-      "[pronun] r3",
-      JSON.stringify({
-        readingAccuracy,
-        pronunciationScore,
-        missed: uniqueMissed,
-        endingDrops: uniqueEndingDrops,
-        substitutions: uniqueSubstitutions,
-        recognized: collectedText.trim(),
-      })
-    );
 
     // ---------------- OpenAI 코멘트 생성 ----------------
     let pronunciationComment = "";

@@ -252,15 +252,15 @@ export default function StepTestClient({
       const lvl = parseFloat(selectedLevel);
 
       // [DEV 전용] ?dbgPassage=<id> 로 특정 지문 고정 (감지 로직 반복 테스트용)
-      if (
-        process.env.NODE_ENV === "development" &&
-        searchParams.get("dbgPassage")
-      ) {
-        const { data: forced } = await supabase
+      const dbgId = searchParams.get("dbgPassage");
+      if (process.env.NODE_ENV === "development" && dbgId) {
+        // id 컬럼 타입(int/uuid)을 모르므로 raw 문자열로 조회 — PostgREST가 알아서 캐스팅
+        const { data: forced, error: forcedErr } = await supabase
           .from("passages")
           .select("*")
-          .eq("id", Number(searchParams.get("dbgPassage")))
+          .eq("id", dbgId)
           .maybeSingle();
+        console.log("[dbgPassage]", dbgId, "→", forced?.id ?? "NOT FOUND", forcedErr ?? "");
         if (forced) {
           setPassage(forced);
           setLastPassageId(forced.id);
@@ -869,11 +869,6 @@ export default function StepTestClient({
             <blockquote className="px-6 py-8 text-xl leading-relaxed text-slate-800 sm:px-10">
               {passage.content}
             </blockquote>
-            {process.env.NODE_ENV === "development" && (
-              <p className="px-6 pb-4 text-xs text-slate-400 sm:px-10">
-                [dev] passage id={passage.id} · 고정: ?dbgPassage={passage.id}
-              </p>
-            )}
           </div>
         )}
 
@@ -943,6 +938,22 @@ export default function StepTestClient({
         {/* RESULT */}
         {phase === "result" && finalResult && (
           <div className="space-y-5">
+            {process.env.NODE_ENV === "development" && passage && (
+              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                <span>[dev] passage id={passage.id}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFinalResult(null);
+                    setCountdown(7);
+                    setPhase("ready");
+                  }}
+                  className="rounded-md border border-slate-300 px-2 py-1 font-medium text-slate-600 hover:bg-slate-100"
+                >
+                  ↻ 같은 지문 다시 읽기
+                </button>
+              </div>
+            )}
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-100 px-6 py-6 sm:px-10">
                 <h3 className="flex items-center gap-2 text-base font-semibold text-slate-900">
@@ -1016,14 +1027,22 @@ export default function StepTestClient({
                       {finalResult.substitutions
                         .slice(0, 5)
                         .map(
-                          (s: { from: string; to: string }, i: number) => (
-                            <span
-                              key={i}
-                              className="rounded-full bg-rose-50 px-3 py-1 text-sm font-medium text-rose-600"
-                            >
-                              {s.from} → {s.to}
-                            </span>
-                          )
+                          (
+                            s: { from: string; to: string; before?: string },
+                            i: number
+                          ) => {
+                            const ctx = s.before ? `${s.before} ` : "";
+                            return (
+                              <span
+                                key={i}
+                                className="rounded-full bg-rose-50 px-3 py-1 text-sm font-medium text-rose-600"
+                              >
+                                {ctx}
+                                {s.from} → {ctx}
+                                {s.to}
+                              </span>
+                            );
+                          }
                         )}
                     </div>
                   </div>
