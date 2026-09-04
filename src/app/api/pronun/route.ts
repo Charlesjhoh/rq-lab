@@ -21,6 +21,25 @@ const SUFFIX_LOOKALIKES = new Set([
   "bread", "instead", "ahead", "afraid", "said", "toward", "world",
 ]);
 
+// 소리가 같아 아이가 "틀리게 읽은" 게 아닌데도 전사가 갈리는 쌍. 치환 판정에서 제외.
+const HOMOPHONE_PAIRS = new Set(
+  [
+    ["their", "there"], ["their", "theyre"], ["there", "theyre"],
+    ["to", "too"], ["to", "two"], ["too", "two"], ["your", "youre"],
+    ["here", "hear"], ["no", "know"], ["for", "four"], ["be", "bee"],
+    ["by", "buy"], ["by", "bye"], ["one", "won"], ["threw", "through"],
+    ["knew", "new"], ["right", "write"], ["hour", "our"], ["sea", "see"],
+    ["son", "sun"], ["ate", "eight"], ["wait", "weight"], ["would", "wood"],
+    ["hole", "whole"], ["made", "maid"], ["mail", "male"], ["plain", "plane"],
+    ["road", "rode"], ["some", "sum"], ["tail", "tale"], ["way", "weigh"],
+    ["week", "weak"], ["blew", "blue"], ["flour", "flower"], ["bare", "bear"],
+    ["pair", "pear"], ["deer", "dear"], ["meat", "meet"], ["hi", "high"],
+    ["night", "knight"], ["piece", "peace"], ["seen", "scene"],
+  ].map(([a, b]) => [a, b].sort().join("|"))
+);
+const isHomophone = (a: string, b: string) =>
+  HOMOPHONE_PAIRS.has([a, b].sort().join("|"));
+
 export async function POST(req: NextRequest) {
   const SpeechSDK = await import("microsoft-cognitiveservices-speech-sdk");
 
@@ -370,21 +389,22 @@ export async function POST(req: NextRequest) {
           const refIdx = dels[p];
           const from = refWords[refIdx];
           const to = spokenWords[inss[p]];
-          // 기능어가 얽힌 치환(their↔there, to↔too, a↔the)은 대부분 동음이의/ASR 노이즈
-          const eitherFunction =
-            FUNCTION_WORDS.has(from) || FUNCTION_WORDS.has(to);
+          // 소리가 같은 쌍(their/there)은 아이가 제대로 읽은 것 — 오디오로는 못 잡는다.
+          // 짧은 원문 단어가 긴 단어로 튄 건(a→elephant) ASR 노이즈일 확률이 높다.
+          // ASR이 한 단어를 둘로 쪼갠 흔적(windowsill→window+sill): 블록에 ins가 더 많고
+          // 발화가 원문을 접두/포함할 때만 아티팩트로 본다.
+          const tooSimilar = editDist(from, to) <= 1;
+          const shortNoise = from.length <= 2 && to.length >= 5;
           const splitArtifact =
-            from.startsWith(to) || to.startsWith(from) || from.includes(to);
-          const tooSimilar = editDist(from, to) <= 1; // 오탐/사소한 슬립
+            inss.length > dels.length &&
+            (to.startsWith(from) || from.startsWith(to));
           if (
             refIdx <= lastReadRef &&
-            !readRef[refIdx] && // Azure가 원문 단어를 인식 못 함 = 진짜 안 읽음/다르게 읽음
-            !azureGoodRefIdx.has(refIdx) &&
-            from.length >= 3 &&
-            to.length >= 3 &&
-            !eitherFunction &&
-            !splitArtifact &&
-            !tooSimilar
+            !azureGoodRefIdx.has(refIdx) && // Azure가 원문 단어를 잘 읽었다고 확인 안 함
+            !isHomophone(from, to) &&
+            !tooSimilar &&
+            !shortNoise &&
+            !splitArtifact
           ) {
             substitutions.push({ from, to });
             substitutedRefIdx.add(refIdx);
@@ -404,20 +424,6 @@ export async function POST(req: NextRequest) {
       if (i < lastReadRef && !substitutedRefIdx.has(i)) missedWords.push(refWords[i]);
     }
 
-    // -ed / -s 어미 누락 단어: 마지막 음소 점수 낮은 순 최대 6개
-    const uniqueEndingDrops = [...endingDropScores.entries()]
-      .sort((a, b) => a[1] - b[1])
-      .slice(0, 6)
-      .map(([w]) => w);
-
-    // 발음 약한 단어: 점수 낮은 순으로 최대 6개 (어미 누락으로 이미 잡힌 건 제외)
-    const uniqueBad = [...badWordScores.entries()]
-      .sort((a, b) => a[1] - b[1])
-      .filter(([w]) => !uniqueEndingDrops.includes(w))
-      .slice(0, 6)
-      .map(([w]) => w);
-    const uniqueWrong = [...new Set(wrongWords)];
-
     // 바꿔 읽은 단어(원문 X → 실제 Y): 원문 단어 기준 중복 제거, 최대 6개
     const seenSubFrom = new Set<string>();
     const uniqueSubstitutions = substitutions
@@ -428,6 +434,21 @@ export async function POST(req: NextRequest) {
       })
       .slice(0, 6);
     const substitutedWordSet = new Set(uniqueSubstitutions.map((s) => s.from));
+
+    // -ed / -s 어미 누락 단어: 마지막 음소 점수 낮은 순 최대 6개 (치환으로 잡힌 건 제외)
+    const uniqueEndingDrops = [...endingDropScores.entries()]
+      .sort((a, b) => a[1] - b[1])
+      .filter(([w]) => !substitutedWordSet.has(w))
+      .slice(0, 6)
+      .map(([w]) => w);
+
+    // 발음 약한 단어: 점수 낮은 순 최대 6개 (어미 누락·치환으로 이미 잡힌 건 제외)
+    const uniqueBad = [...badWordScores.entries()]
+      .sort((a, b) => a[1] - b[1])
+      .filter(([w]) => !uniqueEndingDrops.includes(w) && !substitutedWordSet.has(w))
+      .slice(0, 6)
+      .map(([w]) => w);
+    const uniqueWrong = [...new Set(wrongWords)];
 
     // "놓친 단어" = 읽은 구간 안에서 LCS·Azure 어느 쪽도 잡지 못한 원문 단어.
     // 기능어(the/a/at 등)도 아이가 일부러 건너뛰면 실제 읽기 오류이므로 그대로 노출한다.
