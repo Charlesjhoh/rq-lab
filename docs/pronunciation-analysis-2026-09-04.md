@@ -6,10 +6,12 @@
 
 ## 요약
 
+*(약자는 아래 "용어 정리" 참고. LCS = 두 단어열을 최적으로 나란히 맞추는 정렬 방법, 3절.)*
+
 | 오류 유형 | 감지 방식 | 신뢰도 |
 |---|---|---|
 | 놓친 단어 (통째 스킵) | LCS 정렬 + Azure 인식 여부 | 내용어는 높음, 기능어는 중간 |
-| 바꿔 읽은 단어 (치환) | LCS 정렬의 del+ins 페어링 | "확실히 다른 단어"만 — 그 외는 못 잡음 |
+| 바꿔 읽은 단어 (치환) | LCS 정렬에서 "빠진 원문 단어 + 그 자리에 생긴 다른 단어" 짝짓기 | "확실히 다른 단어"만 — 그 외는 못 잡음 |
 | 어미 누락 (-ed / -s) | Azure 음소 단위 점수 | ~4/5, 녹음마다 편차 |
 | 삽입 (없는 단어 추가) | **화면에 표시 안 함** | ASR이 삽입어를 버려서 불가 |
 | 발음 품질 (단어별 오발음) | Azure 단어 점수 → 점수에만 반영 | 개별 단어 지목은 안 함(노이즈 과다) |
@@ -21,16 +23,57 @@
 
 ---
 
+## 용어 정리
+
+| 약자/용어 | 풀이 | 이 문서에서의 의미 |
+|---|---|---|
+| **STT** (Speech-to-Text) | 음성 → 텍스트 변환 | 아이 녹음을 글자로 옮기는 것 |
+| **ASR** (Automatic Speech Recognition) | 자동 음성 인식 | STT와 같은 뜻으로 씀 (Azure의 인식 엔진) |
+| **전사본 / transcript** | ASR이 받아쓴 결과 텍스트 | 아이가 "말한" 것으로 간주하는 문자열 |
+| **원문 / reference** | 지문 텍스트 | 아이가 "읽어야 할" 정답 문자열 |
+| **토큰 / token** | 공백으로 자른 단어 하나 | "The cat" → `["the", "cat"]` |
+| **정규화 / normalize** | 비교하기 좋게 다듬기 | 소문자화·문장부호 제거·축약형 풀기 |
+| **음소 / phoneme** | 말소리의 최소 단위 | "cat" = /k/ /æ/ /t/ 세 음소. Azure가 음소마다 점수를 줌 |
+| **어간 / stem** | 단어에서 어미를 뺀 부분 | "walked"의 어간 = "walk" |
+| **어미 / 굴절 어미 (inflectional suffix)** | 문법 기능을 더하는 끝소리 | 과거형 `-ed`, 복수·3인칭 `-s` |
+| **LCS** (Longest Common Subsequence, 최장 공통 부분수열) | 두 수열에서 순서를 지키며 공통으로 뽑을 수 있는 가장 긴 부분 | 원문 단어열과 전사본 단어열을 "가장 많이 겹치게" 짝지어, 어디가 빠졌고 어디가 바뀌었는지 알아내는 정렬 방법 (아래 3절 참고) |
+| **DP** (Dynamic Programming, 동적 계획법) | 작은 문제 답을 표에 저장해 큰 문제를 푸는 기법 | LCS를 계산하는 방법 |
+| **op / 연산** (`match` / `del` / `ins`) | 정렬 결과를 되짚을 때 나오는 동작 | `match`=같음, `del`=원문에만 있음(=안 읽음), `ins`=전사본에만 있음(=끼워 읽음) |
+| **치환 / substitution** | 원문 X 자리에 다른 단어 Y를 읽음 | 정렬에서 `del`+`ins`가 붙어 나온 것 |
+| **삽입 / insertion** | 원문에 없는 단어를 끼워 읽음 | 정렬의 `ins` |
+| **생략 / omission** | 원문 단어를 안 읽음 = "놓친 단어" | 정렬의 `del` |
+| **오발음 / Mispronunciation** | 읽긴 읽었는데 소리가 틀림 | Azure `ErrorType` 중 하나 |
+| **편집 거리 / edit distance (Levenshtein)** | 한 문자열을 다른 문자열로 바꾸는 데 필요한 최소 글자 편집 횟수 | "cat"→"cap" = 1. 치환 오탐(사소한 슬립)을 거르는 데 씀 |
+| **동음이의어 / homophone** | 소리는 같고 뜻·철자가 다른 단어 | their/there, to/too. 오디오로는 구분 불가 → 치환에서 제외 |
+| **기능어 / function word** | 관사·전치사·대명사 등 문법용 단어 | the, a, of, its, to, in… |
+| **내용어 / content word** | 명사·동사·형용사 등 뜻을 나르는 단어 | dog, run, happy… |
+| **WPM** (Words Per Minute) | 분당 읽은 단어 수 | 읽기 속도 지표 |
+| **커버리지 / completeness** | 지문 중 실제로 읽은 비율 | 20단어 중 15단어 읽음 = 0.75 |
+
+---
+
 ## 1. 입력: Azure Speech
 
-`PronunciationAssessmentConfig(referenceText, HundredMark, **Phoneme**, enableMiscue=true)`
-로 **연속 인식(continuous recognition)**을 돌린다. 두 종류의 데이터가 나온다:
+Azure의 **발음 평가(Pronunciation Assessment)** 기능을 이렇게 설정해서 쓴다:
+
+```
+PronunciationAssessmentConfig(
+  원문 텍스트,
+  HundredMark,        // 100점 만점 채점
+  Phoneme,            // 음소 단위까지 채점 (어미 누락 감지에 필수)
+  enableMiscue=true   // 원문 대비 생략/삽입/치환을 표시하도록
+)
+```
+
+**연속 인식(continuous recognition)** = 한 문장씩 끊지 않고 녹음 전체를 계속 인식하는
+모드. 문단 낭독이라 이 모드를 쓴다. 두 종류의 데이터가 나온다:
 
 1. **ASR 전사본** (`collectedText`) — 아이가 말한 것을 Azure가 텍스트로 옮긴 것.
    원문 편향이 강하다(원문에 맞춰 인식).
-2. **단어·음소 단위 채점** — `recognized` 콜백마다 오는 JSON(`NBest[0].Words`)에
-   단어별 `AccuracyScore` / `ErrorType`(None·Mispronunciation·Omission·Insertion),
-   그리고 단어 안 음소별 `AccuracyScore`.
+2. **단어·음소 단위 채점** — 인식 도중 `recognized` 콜백이 발화 구간마다 호출되고,
+   그때 오는 JSON(`NBest[0].Words`)에 단어별 점수(`AccuracyScore`)와 오류 유형
+   (`ErrorType` = None / Mispronunciation / Omission / Insertion), 그리고 단어를 이루는
+   음소마다의 점수가 들어 있다.
 
 ### 설정상 주의점
 
@@ -58,20 +101,55 @@
 
 ## 3. 시퀀스 정렬 (LCS)
 
-원문 토큰열 `refWords`(길이 R)과 전사본 토큰열 `spokenWords`(길이 S)를
-**최장 공통 부분수열(LCS)**로 정렬한다.
+### 무슨 문제를 푸는가
 
-> 예전엔 그리디 윈도우 매칭이었는데, `the/a/and/on/i` 같은 흔한 단어가 뒤쪽의 같은
-> 단어에 잘못 붙으면 포인터가 앞서나가 그 사이 실제로 읽은 단어들이 전부 "놓친
-> 단어"로 잡히는 버그가 있었다. LCS는 전역 최적이라 이 문제가 없다.
+원문 단어열과 전사본 단어열을 나란히 놓고 **"어디가 같고, 어디가 빠졌고, 어디가
+바뀌었는지"**를 알아내야 한다. 단순히 앞에서부터 하나씩 비교하면, 아이가 단어
+하나만 건너뛰어도 그 뒤가 전부 한 칸씩 밀려서 "다 틀렸다"고 나온다.
 
-DP 테이블을 채운 뒤 역추적하면서 **연산 시퀀스** `ops`를 만든다:
+**LCS (최장 공통 부분수열)** = 두 열에서 **순서를 지키면서** 공통으로 뽑을 수 있는
+가장 긴 단어 나열. 이걸 찾으면 나머지(공통이 아닌 부분)가 곧 오류다.
 
-- `match` — `refWords[i] === spokenWords[k]`, 둘 다 전진
-- `del` — 원문 단어 `i`를 건너뜀 (전사본에 없음)
-- `ins` — 전사본 단어 `k`를 건너뜀 (원문에 없음)
+### 예시
 
-`matchedRefIdx` = LCS로 매칭된 원문 인덱스 집합.
+```
+원문   : the  cat  sat  on  the  mat
+전사본 : the  cat       on  a    mat
+```
+
+LCS = `the cat on mat` (4단어). 이걸 축으로 정렬하면:
+
+```
+the  cat  sat   on   the   mat
+the  cat  (없음) on   a     mat
+          ↑             ↑
+          del          del + ins  →  "the"를 "a"로 바꿔 읽음(치환)
+          (sat 놓침)
+```
+
+→ `sat` = 놓친 단어, `the→a` = 바꿔 읽은 단어.
+
+> 예전엔 "앞에서부터 훑으며 12단어 창 안에서 같은 단어 찾기"(그리디) 방식이었는데,
+> `the/a/and/on/i` 같은 흔한 단어가 **뒤쪽에 있는 같은 단어**에 잘못 매칭되면 포인터가
+> 확 앞서나가, 그 사이에 아이가 제대로 읽은 단어들이 전부 "놓친 단어"로 잡히는
+> 버그가 있었다. LCS는 열 전체를 보고 최적으로 맞추므로 이 문제가 없다.
+
+### 어떻게 계산하나 (DP)
+
+`dp[i][k]` = `refWords[i..]`와 `spokenWords[k..]`의 LCS 길이. 표를 뒤에서부터 채운다:
+
+```
+refWords[i] === spokenWords[k]  →  dp[i][k] = dp[i+1][k+1] + 1   (둘 다 소비하고 +1)
+아니면                          →  dp[i][k] = max(dp[i+1][k], dp[i][k+1])  (한쪽만 소비)
+```
+
+표를 다 채운 뒤 `(0,0)`부터 앞으로 되짚으며(backtrack) **연산 시퀀스** `ops`를 만든다:
+
+- `match` — 두 단어가 같음. 둘 다 전진
+- `del` — 원문 단어를 건너뜀 (전사본에 없음 = 안 읽었거나 다르게 읽음)
+- `ins` — 전사본 단어를 건너뜀 (원문에 없음 = 끼워 읽었거나 다르게 읽음)
+
+`matchedRefIdx` = `match`로 짝지어진 원문 단어 인덱스 집합.
 
 ---
 
@@ -129,9 +207,13 @@ for 원문 단어 i:
 
 ## 6. 바꿔 읽은 단어 (치환, `substitutions` → `uniqueSubstitutions`)
 
-`ops`에서 **연속된 비매칭 블록**(match 사이의 del/ins 구간)을 찾아, 블록 안의
+**치환** = 원문의 어떤 단어를 빼먹은 게 아니라, 그 자리에 **다른 단어를 읽은** 것.
+정렬(`ops`)에서 보면 `del`(원문 단어 하나가 없어짐)과 `ins`(그 자리에 다른 단어가 생김)이
+**나란히** 나온다.
+
+`ops`에서 `match`가 아닌 연산이 연달아 나오는 구간(**비매칭 블록**)을 찾아, 그 안의
 `del`(원문 단어)과 `ins`(전사 단어)를 **순서대로 짝지어** `from → to` 치환 후보로 본다.
-블록에 del이 2개·ins가 1개면 1쌍만 치환, 나머지 del은 순수 누락.
+블록에 `del`이 2개·`ins`가 1개면 1쌍만 치환, 남은 `del` 1개는 순수 누락(놓친 단어).
 
 ### 오탐 필터 (전부 통과해야 치환으로 인정)
 
@@ -141,8 +223,8 @@ for 원문 단어 i:
 | `!azureGoodRefIdx.has(refIdx)` | Azure가 원문 단어를 잘 읽었다고 확인했으면 = ASR 전사 노이즈 |
 | `!isHomophone(from, to)` | their/there, to/too… 소리가 같으면 오디오로 못 잡음 (정적 목록) |
 | `editDist(from, to) > 1` | 1글자 차이는 오탐/사소한 슬립 |
-| `!(from.length<=2 && to.length>=5)` | `a → elephant` 같은 건 ASR 노이즈 확률 높음 |
-| split artifact 아님 | ASR이 한 단어를 둘로 쪼갠 흔적(`windowsill → window + sill`): 블록에 ins가 더 많고 발화가 원문을 접두/포함할 때 |
+| `!(from.length<=2 && to.length>=5)` | `a → elephant` 같은 짧은→긴 단어는 ASR 노이즈 확률 높음 |
+| 단어 쪼개짐(split artifact) 아님 | ASR이 한 단어를 둘로 잘못 받아쓴 경우(`windowsill` → "window" + "sill")를 걸러냄: 블록에 `ins`가 `del`보다 많고, 전사 단어가 원문 단어로 시작하거나 그 반대일 때 |
 
 ### 표시
 
@@ -164,21 +246,27 @@ for 원문 단어 i:
 ASR은 어미를 빼먹어도 원문 단어로 인식한다("walk" → "walked"). 그래서 단어 레벨로는
 못 잡고, **Azure의 음소 단위 점수**로만 잡힌다.
 
-### 대상 단어 (`looksInflected`)
+### 대상 단어 (`looksInflected` = "굴절 어미가 붙은 것으로 보이는 단어")
 
-- `-ed`로 끝남 (4글자 이상), 또는
-- `-s`로 끝남 (4글자 이상, 단 `-ss/-us/-is`로 끝나는 건 굴절 어미 아님 → 제외)
-- `SUFFIX_LOOKALIKES`(this, was, goes, bread…) 제외
+- `-ed`로 끝남 (4글자 이상 — "bed", "red" 같은 짧은 단어 제외), 또는
+- `-s`로 끝남 (4글자 이상, 단 `-ss`/`-us`/`-is`로 끝나면 굴절 어미가 아니라 원래 철자
+  이므로 제외 — "glass", "bus", "this")
+- `SUFFIX_LOOKALIKES` 목록(this, was, goes, bread…) 제외 — 위 규칙을 통과하지만
+  굴절형이 아닌 흔한 단어들
 
-### 판정 (`phonemeScores` = 그 단어의 음소별 점수, `last` = 마지막 음소, `stem` = 나머지)
+### 판정
 
-세 경로 중 하나라도 만족하면 어미 누락:
+용어: `phonemeScores` = 그 단어를 이루는 음소마다 Azure가 준 점수 배열.
+`last` = 마지막 음소 점수(≈ 어미 소리), `stem` = 마지막을 뺀 나머지(≈ 어간 소리),
+`stemMean` = 어간 음소 점수 평균, `단어총점` = Azure가 그 단어 전체에 준 점수.
+
+세 경로 중 하나라도 만족하면 "어미 누락":
 
 | 경로 | 조건 | 의도 |
 |---|---|---|
-| `relDrop` | `stemMean>=45` & `last<55` & `last <= stemMean-20` & `단어총점<78` | 어간은 살아있는데 끝 음소만 상대적으로 급락 |
-| `hardZero` | `stemMean>=60` & `last<12` | 어간 확실히 좋고 끝 음소 ≈0 → 총점 무관하게 확실 (`smiles [71,75,69,51,0]`) |
-| `mushyEnding` | `단어총점<45` & `last<40` & `last <= 최저음소` | 어간까지 뭉갠 상태에서 어미도 빠짐 (`plays [45,53,37,37]`) |
+| `relDrop` (상대 하락) | `stemMean>=45` & `last<55` & `last <= stemMean-20` & `단어총점<78` | 어간은 그럭저럭 살아있는데 끝 음소만 어간보다 20점 이상 뚝 떨어짐 |
+| `hardZero` (끝소리 0) | `stemMean>=60` & `last<12` | 어간은 확실히 잘 읽었는데 끝 음소가 거의 0 → 단어총점이 높아도 어미는 확실히 빠진 것 (예: `smiles` 음소 `[71,75,69,51,0]`) |
+| `mushyEnding` (뭉갠 어미) | `단어총점<45` & `last<40` & `last <= 최저음소` | 단어 전체가 약한데 그중에서도 끝 음소가 제일 낮음 → 어간까지 뭉갠 상태에서 어미도 빠진 것 (예: `plays` 음소 `[45,53,37,37]`) |
 
 > 실측: 어미를 빼먹어도 Azure는 그 음소를 0이 아니라 **40~50점**으로 준다. 절대값
 > `<25`만 보면 대부분 놓친다. 그래서 "어간 대비 상대 하락"이 주 신호.
