@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# stt 비교 실험 (scripts/stt-compare.mjs) — 로컬 녹음/합성음성
+scripts/audio/
+scripts/__pycache__/

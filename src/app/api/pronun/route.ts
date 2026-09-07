@@ -30,6 +30,75 @@ const HOMOPHONE_PAIRS = new Set(
 const isHomophone = (a: string, b: string) =>
   HOMOPHONE_PAIRS.has([a, b].sort().join("|"));
 
+// 원문 없이 순수 받아쓰기를 한 번 더 돌려(2차 패스) 그 전사본을 "교차검증 신호"로 쓴다.
+// 원문 편향 STT가 정규화로 지워버리는 치환·삽입·어미 누락을 되살린다.
+// read당 Azure STT 요금이 2배라 기본 off — Vercel 환경변수로 켠다.
+// off면 응답 JSON은 기존과 100% 동일(아래 병합 로직이 전부 no-op).
+const SECOND_PASS = process.env.PRONUN_SECOND_PASS === "1";
+
+// "-ed / -s 굴절 어미가 붙은 것으로 보이는 단어"인가. (음소 게이트가 1차 필터라 느슨해도 됨)
+function looksInflectedWord(w: string): boolean {
+  if (SUFFIX_LOOKALIKES.has(w)) return false;
+  const endsEd = w.length >= 4 && /ed$/.test(w);
+  const endsInflectionalS =
+    w.length >= 4 && /s$/.test(w) && !/(?:ss|us|is)$/.test(w);
+  return endsEd || endsInflectionalS;
+}
+
+// full 이 got 에서 굴절 어미만 뺀 형태인가 (barked→bark, chased→chase, plays→play).
+// 2차 패스가 굴절 원문 단어를 어간으로 전사했을 때 = 어미 누락 신호.
+function isStemDrop(full: string, got: string): boolean {
+  if (full === got || !looksInflectedWord(full)) return false;
+  return (
+    full === got + "s" ||
+    full === got + "es" ||
+    full === got + "ed" ||
+    full === got + "d" ||
+    (full.endsWith("ied") && got === full.slice(0, -3) + "y")
+  );
+}
+
+type AlignOp = { t: "match" | "del" | "ins"; ref?: number; sp?: number };
+
+// 원문 단어열 ↔ 전사 단어열 LCS 정렬. match/del/ins 연산 시퀀스와 매칭된 원문 인덱스 집합.
+function align(ref: string[], spk: string[]): {
+  ops: AlignOp[];
+  matchedRefIdx: Set<number>;
+} {
+  const R = ref.length;
+  const S = spk.length;
+  const dp: number[][] = Array.from({ length: R + 1 }, () =>
+    new Array(S + 1).fill(0)
+  );
+  for (let i = R - 1; i >= 0; i--) {
+    for (let k = S - 1; k >= 0; k--) {
+      dp[i][k] =
+        ref[i] === spk[k]
+          ? dp[i + 1][k + 1] + 1
+          : Math.max(dp[i + 1][k], dp[i][k + 1]);
+    }
+  }
+  const ops: AlignOp[] = [];
+  const matchedRefIdx = new Set<number>();
+  let i = 0;
+  let k = 0;
+  while (i < R || k < S) {
+    if (i < R && k < S && ref[i] === spk[k]) {
+      matchedRefIdx.add(i);
+      ops.push({ t: "match", ref: i, sp: k });
+      i++;
+      k++;
+    } else if (k >= S || (i < R && dp[i + 1][k] >= dp[i][k + 1])) {
+      ops.push({ t: "del", ref: i });
+      i++;
+    } else {
+      ops.push({ t: "ins", sp: k });
+      k++;
+    }
+  }
+  return { ops, matchedRefIdx };
+}
+
 export async function POST(req: NextRequest) {
   const SpeechSDK = await import("microsoft-cognitiveservices-speech-sdk");
 
@@ -107,6 +176,9 @@ export async function POST(req: NextRequest) {
     // -ed / -s 어미 누락으로 판정된 단어 -> 마지막 음소 점수. ASR은 어미를 빼먹어도
     // 원문 단어로 인식해버려 "놓친 단어"로는 안 잡히므로 별도로 모은다.
     const endingDropScores = new Map<string, number>();
+    // 굴절어 후보의 음소 요약(단어 문자열 키). 2차 패스가 어간으로 전사한 단어를
+    // 어미 누락으로 판정할 때 마지막 음소 점수 게이트에 쓴다.
+    const phonemeByWord = new Map<string, { last: number; wordScore: number }>();
     // Azure가 인식한 단어를 원문 순서대로 누적. 연속 모드에서는 Omission을 안 내보내므로
     // "빼먹은 단어"는 아래 LCS 전사본 정렬로 잡고, 여기 값은 "읽긴 읽었다"의 근거로만 쓴다.
     const azureWords: { w: string; errorType: string; score: number | null }[] = [];
@@ -116,7 +188,9 @@ export async function POST(req: NextRequest) {
     // 그대로 두면서 "카운트다운 끝나고 멍하니 있던 시간"만 걷어낼 수 있다.
     let leadingSilenceTicks: number | null = null;
 
-    await new Promise<void>((resolve) => {
+    let plainText = "";
+
+    const assessmentPass = new Promise<void>((resolve) => {
       recognizer.recognized = (s, e) => {
         if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
           if (leadingSilenceTicks === null) {
@@ -175,15 +249,7 @@ export async function POST(req: NextRequest) {
                   .filter((v: unknown): v is number => typeof v === "number");
                 // 굴절 어미 후보: -ed 로 끝나거나, -s 로 끝나되 -ss/-us/-is(=-ous 포함)
                 // 처럼 굴절이 아닌 어미는 제외.
-                const endsEd =
-                  cleanedWord.length >= 4 && /ed$/.test(cleanedWord);
-                const endsInflectionalS =
-                  cleanedWord.length >= 4 &&
-                  /s$/.test(cleanedWord) &&
-                  !/(?:ss|us|is)$/.test(cleanedWord);
-                const looksInflected =
-                  (endsEd || endsInflectionalS) &&
-                  !SUFFIX_LOOKALIKES.has(cleanedWord);
+                const looksInflected = looksInflectedWord(cleanedWord);
                 if (
                   looksInflected &&
                   phonemeScores.length >= 3 &&
@@ -193,6 +259,13 @@ export async function POST(req: NextRequest) {
                   const stem = phonemeScores.slice(0, -1);
                   const stemMean =
                     stem.reduce((sum, v) => sum + v, 0) / stem.length;
+                  // 2차 패스 어간 전사 판정에서 쓸 음소 요약을 남긴다 (트리거 여부 무관).
+                  if (!phonemeByWord.has(cleanedWord)) {
+                    phonemeByWord.set(cleanedWord, {
+                      last,
+                      wordScore: effectiveScore,
+                    });
+                  }
                   // 어미를 빼먹으면 끝 음소가 0~50대로 앉는다. 세 경로로 잡는다:
                   //  (a) 어간은 살아있는데(>=45) 끝 음소가 어간보다 20점 이상 낮고 55 미만
                   //      — 단, Azure 단어 총점이 아직 괜찮으면(>=78) 오탐 우려로 보류
@@ -234,6 +307,46 @@ export async function POST(req: NextRequest) {
       recognizer.startContinuousRecognitionAsync();
     });
 
+    // 2차 패스: 원문(정답지) 없이 순수 받아쓰기. 원문 편향이 없어 아이가 실제로 낸
+    // 소리에 더 가깝게 전사된다. 1차와 병렬로 돌려 지연을 늘리지 않는다.
+    // 실패해도 plainText="" 로 두면 아래 병합이 전부 no-op → 1차 결과 그대로.
+    const plainPass = (async () => {
+      if (!SECOND_PASS) return;
+      try {
+        const plainConfig = SpeechSDK.SpeechConfig.fromSubscription(key, region);
+        plainConfig.speechRecognitionLanguage = "en-US";
+        plainConfig.setProperty(
+          SpeechSDK.PropertyId.Speech_SegmentationSilenceTimeoutMs,
+          "1500"
+        );
+        const plainStream = SpeechSDK.AudioInputStream.createPushStream(
+          SpeechSDK.AudioStreamFormat.getWaveFormatPCM(16000, 16, 1)
+        );
+        plainStream.write(new Uint8Array(buffer).buffer);
+        plainStream.close();
+        const plainRecognizer = new SpeechSDK.SpeechRecognizer(
+          plainConfig,
+          SpeechSDK.AudioConfig.fromStreamInput(plainStream)
+        );
+        await new Promise<void>((resolve) => {
+          plainRecognizer.recognized = (_s, e) => {
+            if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
+              plainText += e.result.text + " ";
+            }
+          };
+          plainRecognizer.sessionStopped = () => resolve();
+          plainRecognizer.canceled = () => resolve();
+          plainRecognizer.startContinuousRecognitionAsync();
+        });
+        plainRecognizer.close();
+      } catch (err) {
+        console.error("[pronun] 2차 패스 실패 — 1차 결과로 폴백:", err);
+        plainText = "";
+      }
+    })();
+
+    await Promise.all([assessmentPass, plainPass]);
+
     recognizer.close();
 
     // ---------------- 텍스트 정규화 ----------------
@@ -249,6 +362,8 @@ export async function POST(req: NextRequest) {
 
     const refWords = normalize(text);
     const spokenWords = normalize(collectedText);
+    // 2차 패스(순수 받아쓰기) 전사본. off거나 실패했으면 빈 배열 → 아래 병합 전부 no-op.
+    const plainWords = SECOND_PASS ? normalize(plainText) : [];
 
     // ---------------- 시퀀스 정렬 (LCS 기반) ----------------
     // 예전 그리디 매칭은 "the/a/and/on/i" 같은 흔한 단어가 뒤쪽의 같은 단어에 잘못
@@ -256,45 +371,7 @@ export async function POST(req: NextRequest) {
     // LCS로 최장 공통 부분수열을 구해 원문↔음성을 최적 정렬하고, 그 정렬에서 빠진
     // 원문 단어만 골라낸다.
     const R = refWords.length;
-    const S = spokenWords.length;
-    const dp: number[][] = Array.from({ length: R + 1 }, () =>
-      new Array(S + 1).fill(0)
-    );
-    for (let i = R - 1; i >= 0; i--) {
-      for (let k = S - 1; k >= 0; k--) {
-        dp[i][k] =
-          refWords[i] === spokenWords[k]
-            ? dp[i + 1][k + 1] + 1
-            : Math.max(dp[i + 1][k], dp[i][k + 1]);
-      }
-    }
-
-    // 정렬 연산 시퀀스로 되짚는다: match(둘 다 전진) / del(원문 단어 건너뜀) /
-    // ins(전사본 단어 건너뜀). 이 시퀀스에서 치환(원문 X를 다른 단어 Y로 읽음)을 뽑는다.
-    type AlignOp = { t: "match" | "del" | "ins"; ref?: number; sp?: number };
-    const ops: AlignOp[] = [];
-    const matchedRefIdx = new Set<number>();
-    {
-      let i = 0;
-      let k = 0;
-      while (i < R || k < S) {
-        if (i < R && k < S && refWords[i] === spokenWords[k]) {
-          matchedRefIdx.add(i);
-          ops.push({ t: "match", ref: i, sp: k });
-          i++;
-          k++;
-        } else if (
-          k >= S ||
-          (i < R && dp[i + 1][k] >= dp[i][k + 1])
-        ) {
-          ops.push({ t: "del", ref: i });
-          i++;
-        } else {
-          ops.push({ t: "ins", sp: k });
-          k++;
-        }
-      }
-    }
+    const { ops, matchedRefIdx } = align(refWords, spokenWords);
 
     // ---------------- 원문 단어별 "읽었는가" 판정 ----------------
     // 두 신호를 OR로 합친다:
@@ -331,6 +408,51 @@ export async function POST(req: NextRequest) {
     // "놓친 단어"로 새어나온다.
     const lastReadRef =
       matchedRefIdx.size > 0 ? Math.max(...matchedRefIdx) : -1;
+
+    // ---------------- 2차 패스(순수 받아쓰기) 정렬 → 교차검증 신호 ----------------
+    // plainSubAt:   원문 단어 i 를 2차 전사가 "다른 단어"로 읽음 (i → 그 단어)
+    // plainInsertions: 2차 전사에만 있는 단어 (원문상 바로 앞 단어, 삽입 지점의 원문 위치)
+    const plainSubAt = new Map<number, string>();
+    const plainInsertions: { before: string; word: string; refPos: number }[] = [];
+    if (plainWords.length > 0) {
+      const { ops: pOps } = align(refWords, plainWords);
+      let idx = 0;
+      let lastMatchRef = -1;
+      while (idx < pOps.length) {
+        if (pOps[idx].t === "match") {
+          lastMatchRef = pOps[idx].ref!;
+          idx++;
+          continue;
+        }
+        const dels: number[] = [];
+        const inss: number[] = [];
+        while (idx < pOps.length && pOps[idx].t !== "match") {
+          if (pOps[idx].t === "del") dels.push(pOps[idx].ref!);
+          else inss.push(pOps[idx].sp!);
+          idx++;
+        }
+        const pc = Math.min(dels.length, inss.length);
+        for (let p = 0; p < pc; p++) plainSubAt.set(dels[p], plainWords[inss[p]]);
+        for (let p = pc; p < inss.length; p++) {
+          const before =
+            dels.length > pc
+              ? refWords[dels[dels.length - 1]]
+              : lastMatchRef >= 0
+              ? refWords[lastMatchRef]
+              : "";
+          plainInsertions.push({
+            before,
+            word: plainWords[inss[p]],
+            refPos: dels.length ? dels[dels.length - 1] : lastMatchRef,
+          });
+        }
+      }
+    }
+    // 2차 전사가 원문 i 를 어간으로 읽었나 (barked→bark = 어미 누락 신호)
+    const plainStemDropAt = (i: number): boolean => {
+      const got = plainSubAt.get(i);
+      return !!got && isStemDrop(refWords[i], got);
+    };
 
     // ---------------- 치환(바꿔 읽은 단어) 판정 ----------------
     // 정렬에서 "연속된 비매칭 블록"을 찾아, 그 안의 del(원문 단어)과 ins(전사 단어)를
@@ -369,7 +491,10 @@ export async function POST(req: NextRequest) {
         for (let p = 0; p < pairCount; p++) {
           const refIdx = dels[p];
           const from = refWords[refIdx];
-          const to = spokenWords[inss[p]];
+          // 1차(PA) 전사가 이 자리에 넣은 단어. 단, 2차 순수 전사가 같은 자리를 다른
+          // 단어로 읽었으면 그쪽이 "아이가 실제로 낸 소리"에 더 가까우므로 우선한다
+          // (1차는 red를 back으로 오전사하기도 함).
+          const to = plainSubAt.get(refIdx) ?? spokenWords[inss[p]];
           // 소리가 같은 쌍(their/there)은 아이가 제대로 읽은 것 — 오디오로는 못 잡는다.
           // 짧은 원문 단어가 긴 단어로 튄 건(a→elephant) ASR 노이즈일 확률이 높다.
           // ASR이 한 단어를 둘로 쪼갠 흔적(windowsill→window+sill): 블록에 ins가 더 많고
@@ -379,13 +504,20 @@ export async function POST(req: NextRequest) {
           const splitArtifact =
             inss.length > dels.length &&
             (to.startsWith(from) || from.startsWith(to));
+          // 어간만 읽은 건(plays→play) 치환이 아니라 어미 누락 — 2차 패스가 켜져
+          // 어미 누락 보강이 도는 경우에만 여기서 뺀다 (off면 기존 동작 그대로).
+          const stemDrop =
+            SECOND_PASS && (isStemDrop(from, to) || isStemDrop(to, from));
           if (
             refIdx <= lastReadRef &&
-            !azureGoodRefIdx.has(refIdx) && // Azure가 원문 단어를 잘 읽었다고 확인 안 함
+            // Azure가 "잘 읽었다"고 봐도, 2차 순수 전사가 다른 단어로 읽었으면 그 판단을 뒤집는다
+            // (문서가 지적한 the→a @62점 케이스). 2차 패스 off면 기존과 동일.
+            (!azureGoodRefIdx.has(refIdx) || plainSubAt.has(refIdx)) &&
             !isHomophone(from, to) &&
             !tooSimilar &&
             !shortNoise &&
-            !splitArtifact
+            !splitArtifact &&
+            !stemDrop // 어간만 읽은 건 치환이 아니라 어미 누락 → 아래에서 처리
           ) {
             // 같은 단어(the 등)가 여러 번 나올 때 어느 위치인지 알 수 있게 앞 단어를 붙인다
             substitutions.push({
@@ -397,6 +529,22 @@ export async function POST(req: NextRequest) {
           }
         }
       }
+    }
+
+    // ⚠️ 2차 패스 "독립 치환"(PA 정렬은 원문과 매칭됐는데 2차 전사만 다른 단어)은
+    // 넣지 않는다. 깨끗이 읽은 단어를 2차 STT가 다르게 받아쓰는 것만으로 "바꿔 읽음"으로
+    // 뜨는 오탐이 실측에서 나왔다 (leaves→lived). PA가 자기 정렬에서 이미 del+ins로
+    // 잡은 자리만(위 블록) 2차 전사로 보강한다 — 두 엔진이 함께 틀렸을 때만 신뢰.
+
+    // 2차 패스 어미 누락 보강: 2차 전사가 굴절 원문 단어를 어간으로 읽었고(barked→bark)
+    // 마지막 음소 점수도 확실히 낮으면(<55) 어미 누락으로 인정 — 음소 3경로가 놓친 것.
+    // 임계값을 55로 낮게 잡아 2차 STT의 어간 오전사만으로 뜨는 오탐을 막는다.
+    for (let i = 0; i <= lastReadRef && i < R; i++) {
+      if (!plainStemDropAt(i)) continue;
+      const w = refWords[i];
+      if (endingDropScores.has(w) || substitutedRefIdx.has(i)) continue;
+      const ph = phonemeByWord.get(w);
+      if (ph && ph.last < 55) endingDropScores.set(w, ph.last);
     }
 
     // wrongWords: 커버리지 계산용 — 안 읽은 단어 전부(못다 읽은 꼬리 포함).
@@ -446,6 +594,28 @@ export async function POST(req: NextRequest) {
         !substitutedWordSet.has(w)
     );
 
+    // ---------------- 삽입(원문에 없는 단어를 끼워 읽음) ----------------
+    // 2차 패스 전용. 1차(PA)는 삽입어를 대부분 버려서 안 보였다. 오탐 위험이 커서
+    // 보수적으로: 3글자 이상, disfluency 아님, 원문에 아예 없는 단어, 읽은 구간 중간.
+    const FILLER_WORDS = new Set([
+      "um", "uh", "eh", "er", "mm", "hmm", "mhm", "oh", "ah", "aha", "huh", "yeah",
+    ]);
+    const refWordSet = new Set(refWords);
+    const seenIns = new Set<string>();
+    const uniqueInsertions = plainInsertions
+      .filter(({ word, before, refPos }) => {
+        if (word.length < 3 || FILLER_WORDS.has(word)) return false;
+        if (refWordSet.has(word)) return false; // 어순 뒤집힘/중복 아티팩트
+        if (refPos < 0 || refPos >= lastReadRef) return false; // 문장 중간만
+        if (uniqueEndingDrops.includes(word)) return false;
+        const key = `${before}|${word}`;
+        if (seenIns.has(key)) return false;
+        seenIns.add(key);
+        return true;
+      })
+      .map(({ word, before }) => ({ word, before }))
+      .slice(0, 3);
+
     // ---------------- 읽기 정확도 계산 ----------------
     const readingAccuracy =
       refWords.length === 0
@@ -486,7 +656,8 @@ export async function POST(req: NextRequest) {
     if (
       uniqueMissed.length > 0 ||
       uniqueEndingDrops.length > 0 ||
-      uniqueSubstitutions.length > 0
+      uniqueSubstitutions.length > 0 ||
+      uniqueInsertions.length > 0
     ) {
       const OpenAI = (await import("openai")).default;
       const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
@@ -498,6 +669,10 @@ export async function POST(req: NextRequest) {
       다른 단어로 바꿔 읽은 것: ${uniqueSubstitutions
         .slice(0, 5)
         .map((s) => `${s.from}→${s.to}`)
+        .join(", ")}
+      원문에 없는데 끼워 읽은 단어: ${uniqueInsertions
+        .slice(0, 5)
+        .map((s) => s.word)
         .join(", ")}
 
       위 결과를 바탕으로 학부모가 이해하기 쉽게 격려와 함께 2~3줄의 학습 가이드를 한국어로 작성해 주세요.
@@ -521,11 +696,13 @@ export async function POST(req: NextRequest) {
       badPronunciations: [],
       endingDrops: uniqueEndingDrops,
       substitutions: uniqueSubstitutions,
+      insertions: uniqueInsertions,
       wrongWords: uniqueWrong,
       missedWords: uniqueMissed,
       durationSec,
       leadingSilenceSec,
       recognizedText: collectedText.trim(),
+      plainRecognizedText: SECOND_PASS ? plainText.trim() : "",
     });
   } catch (e: any) {
     console.error("Pronun API Error:", e);

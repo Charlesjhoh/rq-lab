@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { blobToPCM16kMono } from "@/app/components/utilsAudio";
+import { blobToPCM16kMono, pcmToWav } from "@/app/components/utilsAudio";
 import { supabase } from "@/lib/supabase-client";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
@@ -502,6 +502,8 @@ export default function StepTestClient({
     const endingDrops = pronunData.endingDrops || [];
     // 원문과 다른 단어로 바꿔 읽은 것: [{ from, to }]
     const substitutions = pronunData.substitutions || [];
+    // 원문에 없는데 끼워 읽은 단어(2차 패스 전용): [{ word, before }]
+    const insertions = pronunData.insertions || [];
 
     // 🔥 [보정 1]: 실제 일치 단어 수 기반의 정밀 WPM 산출
     const correctWordCount = Math.max(0, originalWordCount - wrongWords.length);
@@ -692,6 +694,8 @@ export default function StepTestClient({
       badPronunciations: badPronunciations,
       endingDrops: endingDrops,
       substitutions: substitutions,
+      insertions: insertions,
+      plainRecognizedText: pronunData.plainRecognizedText || "",
       levelUp,
     });
 
@@ -952,6 +956,35 @@ export default function StepTestClient({
                 >
                   ↻ 같은 지문 다시 읽기
                 </button>
+                {/* [dev] STT 비교 실험용: Azure에 보낸 것과 동일한 16k mono WAV + 원문을
+                    내려받아 scripts/stt-compare.mjs 로 여러 엔진을 돌려볼 수 있게 한다. */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!audioBlob) return;
+                    const pcm = await blobToPCM16kMono(audioBlob);
+                    const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+                    const base = `reading-p${passage.id}-${stamp}`;
+                    const dl = (blob: Blob, name: string) => {
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = name;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    };
+                    dl(new Blob([pcmToWav(pcm)], { type: "audio/wav" }), `${base}.wav`);
+                    dl(new Blob([passage.content ?? ""], { type: "text/plain" }), `${base}.txt`);
+                  }}
+                  className="rounded-md border border-slate-300 px-2 py-1 font-medium text-slate-600 hover:bg-slate-100"
+                >
+                  ⬇ WAV+원문 저장
+                </button>
+                {finalResult?.plainRecognizedText && (
+                  <span className="w-full text-slate-500">
+                    [dev] 2차 전사(순수): {finalResult.plainRecognizedText}
+                  </span>
+                )}
               </div>
             )}
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -1048,9 +1081,40 @@ export default function StepTestClient({
                   </div>
                 )}
 
+                {finalResult?.insertions?.length > 0 && (
+                  <div>
+                    <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                      <AlertCircle className="h-4 w-4 text-violet-500" aria-hidden={true} />
+                      원문에 없는 단어를 넣어 읽은 곳
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      지문에 없는 단어를 끼워 읽었습니다.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {finalResult.insertions
+                        .slice(0, 5)
+                        .map(
+                          (
+                            s: { word: string; before?: string },
+                            i: number
+                          ) => (
+                            <span
+                              key={i}
+                              className="rounded-full bg-violet-50 px-3 py-1 text-sm font-medium text-violet-600"
+                            >
+                              {s.before ? `${s.before} ` : ""}
+                              <span className="font-bold">+{s.word}</span>
+                            </span>
+                          )
+                        )}
+                    </div>
+                  </div>
+                )}
+
                 {finalResult?.wrong_words?.length === 0 &&
                   (finalResult?.endingDrops?.length ?? 0) === 0 &&
-                  (finalResult?.substitutions?.length ?? 0) === 0 && (
+                  (finalResult?.substitutions?.length ?? 0) === 0 &&
+                  (finalResult?.insertions?.length ?? 0) === 0 && (
                     <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
                       <CheckCircle2 className="h-5 w-5" aria-hidden={true} />
                       읽기와 발음 모두 안정적입니다.
