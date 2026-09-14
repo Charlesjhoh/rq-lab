@@ -90,13 +90,18 @@ function TeacherClassesPageInner() {
 
         const { data: profile } = await supabase
           .from("profiles")
-          .select("role, display_name, email")
+          .select("role, display_name, email, teacher_status")
           .eq("id", user.id)
           .maybeSingle();
 
         if (!profile || profile.role !== "teacher") {
           alert("접근 권한이 없습니다. 선생님 계정으로 로그인해 주세요.");
           router.push("/");
+          return;
+        }
+
+        if (profile.teacher_status !== "approved") {
+          router.push("/teacher/pending");
           return;
         }
 

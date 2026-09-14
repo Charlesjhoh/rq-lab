@@ -108,13 +108,18 @@ export default function TeacherPage() {
         // profiles 테이블에서 로그인한 유저의 role을 바로 확인
         const { data: profileData, error: dbError } = await supabase
           .from("profiles")
-          .select("role, display_name, email")
+          .select("role, display_name, email, teacher_status")
           .eq("id", user.id)
           .single();
 
         if (dbError || !profileData || !["teacher", "manager"].includes(profileData.role)) {
           alert("접근 권한이 없습니다. 선생님 계정으로 로그인해 주세요.");
           router.push("/");
+          return;
+        }
+
+        if (profileData.role === "teacher" && profileData.teacher_status !== "approved") {
+          router.push("/teacher/pending");
           return;
         }
 

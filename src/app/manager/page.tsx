@@ -13,6 +13,9 @@ import {
   TrendingUp,
   CalendarClock,
   Ticket,
+  UserCheck,
+  Check,
+  X,
 } from "lucide-react";
 
 type Stats = {
@@ -38,6 +41,13 @@ type SearchedUser = {
   student_name: string | null;
   email: string | null;
   remainingCredits: number;
+};
+
+type PendingTeacher = {
+  id: string;
+  display_name: string | null;
+  email: string | null;
+  teacher_status: string;
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -78,6 +88,10 @@ export default function ManagerPage() {
   const [grantMessage, setGrantMessage] = useState("");
   const [granting, setGranting] = useState(false);
 
+  const [pendingTeachers, setPendingTeachers] = useState<PendingTeacher[]>([]);
+  const [teachersLoading, setTeachersLoading] = useState(false);
+  const [decidingId, setDecidingId] = useState<string | null>(null);
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -100,7 +114,7 @@ export default function ManagerPage() {
           return;
         }
 
-        await Promise.all([loadStats(), loadOrders("")]);
+        await Promise.all([loadStats(), loadOrders(""), loadPendingTeachers()]);
       } catch (err) {
         console.error(err);
         router.push("/");
@@ -111,6 +125,45 @@ export default function ManagerPage() {
 
     init();
   }, [router]);
+
+  const loadPendingTeachers = async () => {
+    setTeachersLoading(true);
+    try {
+      const res = await authedFetch("/api/manager/teachers?status=pending");
+      if (res.ok) {
+        const data = await res.json();
+        setPendingTeachers(data.teachers || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setTeachersLoading(false);
+    }
+  };
+
+  const handleTeacherDecision = async (id: string, decision: "approved" | "rejected") => {
+    setDecidingId(id);
+    try {
+      const res = await authedFetch("/api/manager/teachers/decision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: id, decision }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "처리에 실패했습니다.");
+        return;
+      }
+
+      setPendingTeachers((prev) => prev.filter((t) => t.id !== id));
+    } catch (err) {
+      console.error(err);
+      alert("처리 중 오류가 발생했습니다.");
+    } finally {
+      setDecidingId(null);
+    }
+  };
 
   const loadStats = async () => {
     try {
@@ -254,6 +307,58 @@ export default function ManagerPage() {
             </div>
           </div>
         )}
+
+        {/* 선생님 승인 대기 */}
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <UserCheck className="h-4 w-4 text-indigo-500" aria-hidden={true} />
+            선생님 승인 대기
+            {pendingTeachers.length > 0 && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                {pendingTeachers.length}건
+              </span>
+            )}
+          </h3>
+
+          <div className="mt-3">
+            {teachersLoading ? (
+              <p className="py-4 text-center text-sm text-slate-400">불러오는 중...</p>
+            ) : pendingTeachers.length === 0 ? (
+              <p className="py-4 text-center text-sm text-slate-400">승인 대기 중인 선생님이 없습니다.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {pendingTeachers.map((t) => (
+                  <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-slate-900">
+                        {t.display_name || "이름없음"}
+                      </p>
+                      <p className="truncate text-xs text-slate-400">{t.email}</p>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        onClick={() => handleTeacherDecision(t.id, "approved")}
+                        disabled={decidingId === t.id}
+                        className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        <Check className="h-3.5 w-3.5" aria-hidden={true} />
+                        승인
+                      </button>
+                      <button
+                        onClick={() => handleTeacherDecision(t.id, "rejected")}
+                        disabled={decidingId === t.id}
+                        className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        <X className="h-3.5 w-3.5" aria-hidden={true} />
+                        거절
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
 
         <div className="flex flex-col gap-6 lg:flex-row">
           {/* 결제 내역 검색 */}
