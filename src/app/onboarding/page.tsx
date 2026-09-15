@@ -37,17 +37,17 @@ function OnboardingPageInner() {
       // 기존 profiles 데이터 조회
       const { data: profile, error } = await supabase
         .from("profiles")
-        .select("parent_name, student_name, birth, role, display_name, terms_agreed_at")
+        .select("parent_name, student_name, birth, role, display_name, terms_agreed_at, teacher_status")
         .eq("id", user.id)
         .maybeSingle();
 
       if (error) {
         console.error("프로필 불러오기 실패:", error);
       } else if (profile) {
-        // 이미 선생님으로 가입 완료된 계정이면 이름을 다시 물을 필요 없이 바로 클래스 관리로 보낸다.
+        // 이미 선생님으로 가입한 계정이면 이름을 다시 물을 필요 없이 승인 상태에 맞는 곳으로 보낸다.
         // (표시 이름 변경은 /teacher/classes에서 처리)
         if (profile.role === "teacher") {
-          router.replace("/teacher/classes");
+          router.replace(profile.teacher_status === "approved" ? "/teacher/classes" : "/teacher/pending");
           return;
         }
 
@@ -162,6 +162,7 @@ function OnboardingPageInner() {
       {
         id: user.id,
         role: "teacher",
+        teacher_status: "pending",
         display_name: teacherDisplayName,
         email: user.email,
         terms_agreed_at: termsAgreedAt || new Date().toISOString(),
@@ -178,7 +179,7 @@ function OnboardingPageInner() {
       return;
     }
 
-    router.push("/teacher/classes");
+    router.push("/teacher/pending");
   };
 
   const termsCheckbox = (
@@ -266,7 +267,7 @@ function OnboardingPageInner() {
               onClick={handleSaveTeacher}
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {saving ? "저장 중..." : "저장하고 클래스 관리로 이동"}
+              {saving ? "저장 중..." : "저장하고 승인 요청하기"}
               {!saving && <ArrowRight className="h-4 w-4" aria-hidden={true} />}
             </button>
           </div>

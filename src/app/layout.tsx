@@ -16,17 +16,20 @@ export default function RootLayout({
 
   const [userId, setUserId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [teacherApproved, setTeacherApproved] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUserId(null);
     setRole(null);
+    setTeacherApproved(false);
     router.replace("/login");
   };
 
   const loadRole = async (uid: string) => {
-    const { data } = await supabase.from("profiles").select("role").eq("id", uid).maybeSingle();
+    const { data } = await supabase.from("profiles").select("role, teacher_status").eq("id", uid).maybeSingle();
     setRole(data?.role || null);
+    setTeacherApproved(data?.teacher_status === "approved");
   };
 
 useEffect(() => {
@@ -102,7 +105,7 @@ useEffect(() => {
                 </button>
               )}
 
-              {(role === "teacher" || role === "manager") && (
+              {(role === "manager" || (role === "teacher" && teacherApproved)) && (
                 <button
                   onClick={() => router.push("/teacher")}
                   className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
@@ -112,13 +115,23 @@ useEffect(() => {
                 </button>
               )}
 
-              {role === "teacher" && (
+              {role === "teacher" && teacherApproved && (
                 <button
                   onClick={() => router.push("/teacher/classes")}
                   className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
                 >
                   <School className="h-4 w-4" aria-hidden={true} />
                   클래스 관리
+                </button>
+              )}
+
+              {role === "teacher" && !teacherApproved && (
+                <button
+                  onClick={() => router.push("/teacher/pending")}
+                  className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-amber-600 transition-colors hover:bg-amber-50"
+                >
+                  <Users className="h-4 w-4" aria-hidden={true} />
+                  승인 대기 중
                 </button>
               )}
 

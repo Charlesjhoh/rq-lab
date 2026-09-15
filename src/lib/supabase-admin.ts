@@ -40,12 +40,18 @@ export async function requireRole(authHeader: string | null, allowedRoles: strin
 
   const { data: profile } = await supabaseAdmin
     .from('profiles')
-    .select('role')
+    .select('role, teacher_status')
     .eq('id', user.id)
     .maybeSingle();
 
   if (!profile || !allowedRoles.includes(profile.role)) {
     return { error: '접근 권한이 없습니다.', status: 403 as const };
+  }
+
+  // 선생님 가입은 매니저 승인 전까지 pending 상태 — role만으로는 부족하고
+  // teacher_status가 approved일 때만 실제 선생님 기능에 접근할 수 있다.
+  if (profile.role === 'teacher' && profile.teacher_status !== 'approved') {
+    return { error: '아직 선생님 계정 승인 대기 중입니다.', status: 403 as const };
   }
 
   return { user, role: profile.role as string };
