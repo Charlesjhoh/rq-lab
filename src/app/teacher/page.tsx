@@ -25,6 +25,7 @@ import {
   Lock,
   LockOpen,
 } from "lucide-react";
+import { pickReliableLatest } from "@/lib/reading-results";
 
 // 타입 선언
 type Student = {
@@ -172,11 +173,18 @@ export default function TeacherPage() {
       }
 
       const { results: data } = await res.json();
-      const map: Record<string, ReadingResult> = {};
+      // 학생별로 최근 결과 전체를 모은 뒤 pickReliableLatest로 골라서, 지문이 안 맞아
+      // "좌절" 판정이 난 결과 때문에 실제로는 안정적인 학생이 "이해 부족"처럼 보이는
+      // 일을 막는다.
+      const byUser: Record<string, ReadingResult[]> = {};
       for (const r of data || []) {
-        if (r.user_id && !map[r.user_id]) {
-          map[r.user_id] = r as ReadingResult;
-        }
+        if (!r.user_id) continue;
+        (byUser[r.user_id] ??= []).push(r as ReadingResult);
+      }
+      const map: Record<string, ReadingResult> = {};
+      for (const [userId, userResults] of Object.entries(byUser)) {
+        const reliable = pickReliableLatest(userResults);
+        if (reliable) map[userId] = reliable;
       }
       setLatestByProfileId(map);
     } catch (err) {
@@ -405,7 +413,7 @@ export default function TeacherPage() {
 
                   {results.length > 0 ? (
                     (() => {
-                      const latest = results[0];
+                      const latest = pickReliableLatest(results) ?? results[0];
                       const items: { label: string; cls: string }[] = [];
                       if (latest.comprehension < 70)
                         items.push({

@@ -598,6 +598,18 @@ export default function StepTestClient({
     const safeWpm = isNaN(wpm) ? 0 : wpm;
     const safeAccuracy = isNaN(accuracy) ? 0 : accuracy;
 
+    // currentLevel은 승급/강등 버튼을 눌러야만 갱신되고 레벨 선택 화면에서 직접 고른
+    // selectedLevel과는 따로 놀아서(예: 처음부터 AR3을 선택해도 currentLevel은 AR1인 채로
+    // 남음) 실제로 이번에 테스트한 레벨은 selectedLevel에서 바로 구한다.
+    const testedLevel: "AR1" | "AR2" | "AR3" | "AR4" =
+      selectedLevel === "4.0"
+        ? "AR4"
+        : selectedLevel === "3.0"
+        ? "AR3"
+        : selectedLevel === "2.0"
+        ? "AR2"
+        : "AR1";
+
     // ---------------- DB 저장 ----------------
     const { data: profile } = await supabase
       .from("profiles")
@@ -618,6 +630,7 @@ export default function StepTestClient({
           comprehension: comprehensionScore,
           final_ar: finalAR,
           reading_level: readingLevel,
+          tested_level: testedLevel,
           duration_sec: durationSec,
           spoken_words: correctWordCount,
           total_words: originalWordCount,
@@ -646,18 +659,6 @@ export default function StepTestClient({
       }).catch((err) => console.error("크레딧 자동 소진 실패:", err));
     }
 
-    // currentLevel은 승급/강등 버튼을 눌러야만 갱신되고 레벨 선택 화면에서 직접 고른
-    // selectedLevel과는 따로 놀아서(예: 처음부터 AR3을 선택해도 currentLevel은 AR1인 채로
-    // 남음) 실제로 이번에 테스트한 레벨은 selectedLevel에서 바로 구한다.
-    const testedLevel: "AR1" | "AR2" | "AR3" | "AR4" =
-      selectedLevel === "4.0"
-        ? "AR4"
-        : selectedLevel === "3.0"
-        ? "AR3"
-        : selectedLevel === "2.0"
-        ? "AR2"
-        : "AR1";
-
     // 승급 권유 문턱은 60 — 재테스트 유도가 참여도/마케팅 관점에서 유리하므로 다소
     // 낮춰서 "독립" 판정이 나면 웬만하면 상위 레벨 테스트를 권한다.
     const confidentlyIndependent = readingLevel === "independent" && comprehensionScore >= 60;
@@ -668,12 +669,31 @@ export default function StepTestClient({
       else if (testedLevel === "AR3") levelUp = "AR4";
     }
 
-    // 좌절(frustration) 판정 시 한 단계 낮은 레벨을 권장 (AR1은 최저 단계라 내려갈 곳이 없음)
+    // 좌절(frustration) 판정 시 한 단계 낮은 레벨을 권장 (AR1은 최저 단계라 내려갈 곳이 없음).
+    // 단, 그 아래 레벨을 예전에 이미 "독립" 판정으로 통과한 적이 있다면 다시 내려가라고
+    // 권하지 않는다 — 이미 검증된 레벨로 되돌리는 건 퇴행처럼 느껴지고 도움이 안 된다는
+    // 피드백에 따른 것. 이 경우 levelDown을 비워두면 아래쪽 "같은 레벨로 다시 도전하기"
+    // 문구가 대신 뜬다.
+    const oneLevelBelow: Record<"AR2" | "AR3" | "AR4", "AR1" | "AR2" | "AR3"> = {
+      AR2: "AR1",
+      AR3: "AR2",
+      AR4: "AR3",
+    };
     let levelDown: "AR1" | "AR2" | "AR3" | null = null;
-    if (readingLevel === "frustration") {
-      if (testedLevel === "AR4") levelDown = "AR3";
-      else if (testedLevel === "AR3") levelDown = "AR2";
-      else if (testedLevel === "AR2") levelDown = "AR1";
+    if (readingLevel === "frustration" && testedLevel !== "AR1") {
+      const belowLevel = oneLevelBelow[testedLevel as "AR2" | "AR3" | "AR4"];
+      const { data: priorPass } = await supabase
+        .from("reading_results")
+        .select("id")
+        .eq("user_id", currentUser.id)
+        .eq("tested_level", belowLevel)
+        .eq("reading_level", "independent")
+        .limit(1)
+        .maybeSingle();
+
+      if (!priorPass) {
+        levelDown = belowLevel;
+      }
     }
 
     setRecallPhase("idle");

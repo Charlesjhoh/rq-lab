@@ -19,6 +19,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import GrowthTrendCharts from "@/components/ui/GrowthTrendCharts";
+import { pickReliableLatest } from "@/lib/reading-results";
 
 function ClientPart() {
   const router = useRouter();
@@ -76,7 +77,7 @@ function ClientPart() {
       </div>
     );
 
-  const latest = results[0];
+  const latest = pickReliableLatest(results);
 
   return (
     <div className="min-h-screen w-full bg-slate-50 px-4 py-10 sm:py-14">
