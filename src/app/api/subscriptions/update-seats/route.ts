@@ -5,7 +5,7 @@ import { supabaseAdmin, requireRole } from '@/lib/supabase-admin';
 import { payWithBillingKey, createPaymentSchedule, revokePaymentSchedules } from '@/lib/portone';
 import { TEACHER_SEAT_PRICE_KRW } from '@/lib/products';
 
-const SEAT_ORDER_NAME = '리드이비 선생님 좌석 구독';
+const SEAT_ORDER_NAME = 'Read English Better 선생님 좌석 구독';
 const PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
 
 export async function POST(req: NextRequest) {

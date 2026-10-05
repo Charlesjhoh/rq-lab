@@ -64,6 +64,12 @@ useEffect(() => {
 }, []);
   return (
     <html lang="en" className="bg-slate-50">
+      <head>
+        <title>Read English Better · 영어 리딩 AI 분석</title>
+        <meta name="description" content="Read English Better — 영어 리딩 AI 분석. 영어 읽기 테스트와 발음·유창성 분석 리포트." />
+        <meta property="og:site_name" content="Read English Better" />
+        <meta property="og:title" content="Read English Better · 영어 리딩 AI 분석" />
+      </head>
       <body className="bg-slate-50">
         {/* 상단 바 */}
         <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md">
@@ -72,11 +78,14 @@ useEffect(() => {
               onClick={() => router.push("/")}
               className="flex items-center gap-2.5"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white">
+              <span className="hidden h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white sm:flex">
                 <BookOpen className="h-5 w-5" aria-hidden={true} />
               </span>
-              <span className="text-base font-semibold tracking-tight text-slate-900">
-                Reading App
+              <span className="flex flex-col items-start whitespace-nowrap leading-tight">
+                <span className="text-sm font-semibold tracking-tight text-slate-900 sm:text-base">
+                  Read English Better
+                </span>
+                <span className="text-[11px] font-medium text-slate-500 sm:text-xs">영어 리딩 AI 분석</span>
               </span>
             </button>
 

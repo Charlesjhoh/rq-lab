@@ -197,7 +197,7 @@ function TeacherClassesPageInner() {
         storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
         channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!,
         billingKeyMethod: "CARD",
-        issueName: "리드이비 선생님 좌석 구독",
+        issueName: "Read English Better 선생님 좌석 구독",
         customer: {
           customerId: currentTeacher.id,
           email: currentTeacher.email || undefined,

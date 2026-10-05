@@ -108,7 +108,7 @@ async function handleSubscriptionChargeSucceeded(paymentId: string, billingKey: 
   const scheduleResult = await createPaymentSchedule({
     paymentId: nextPaymentId,
     billingKey,
-    orderName: '리드이비 선생님 좌석 구독',
+    orderName: 'Read English Better 선생님 좌석 구독',
     amountTotal: sub.seat_count * TEACHER_SEAT_PRICE_KRW,
     timeToPay: nextPeriodEnd.toISOString(),
     customerId: sub.teacher_id,
