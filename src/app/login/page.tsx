@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase-client";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { BookOpen, Mail, KeyRound, ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
+import { BookOpen, Mail, KeyRound, Lock, ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
 
 function LoginPageInner() {
   const [email, setEmail] = useState("");
@@ -14,6 +14,10 @@ function LoginPageInner() {
   const onboardingHref = asTeacher ? "/onboarding?as=teacher" : "/onboarding";
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState<"email" | "otp">("email");
+  // 기본은 이메일+인증번호. PG사 검수처럼 인증메일을 받을 수 없는 경우를 위해
+  // 미리 비밀번호가 설정된 계정(scripts/create-password-user.mjs)으로 로그인하는 모드.
+  const [mode, setMode] = useState<"otp" | "password">("otp");
+  const [password, setPassword] = useState("");
 
   useEffect(() => {
     const checkSession = async () => {
@@ -69,6 +73,20 @@ function LoginPageInner() {
     router.replace(onboardingHref);
   };
 
+  const handlePasswordLogin = async () => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    if (error || !data.session?.user) {
+      alert("아이디 또는 비밀번호가 올바르지 않습니다.");
+      return;
+    }
+
+    router.replace(onboardingHref);
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4 font-sans text-slate-900">
       <div className="grid w-full max-w-4xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5 md:grid-cols-2">
@@ -106,16 +124,73 @@ function LoginPageInner() {
         <div className="flex flex-col justify-center p-8 md:p-10">
           <div className="mb-8">
             <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-              {step === "email" ? "로그인" : "인증번호 입력"}
+              {mode === "password" || step === "email" ? "로그인" : "인증번호 입력"}
             </h2>
             <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-              {step === "email"
+              {mode === "password"
+                ? "아이디(이메일)와 비밀번호로 로그인합니다."
+                : step === "email"
                 ? "이메일로 인증번호를 보내드립니다."
                 : `${email} 로 전송된 8자리 번호를 입력하세요.`}
             </p>
           </div>
 
-          {step === "email" ? (
+          {mode === "password" ? (
+            <div className="space-y-5">
+              <div>
+                <label htmlFor="login-id" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  아이디 (이메일)
+                </label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden={true} />
+                  <input
+                    id="login-id"
+                    type="email"
+                    autoComplete="username"
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="password" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  비밀번호
+                </label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden={true} />
+                  <input
+                    id="password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) handlePasswordLogin();
+                    }}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handlePasswordLogin}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+              >
+                로그인
+                <ArrowRight className="h-4 w-4" aria-hidden={true} />
+              </button>
+
+              <button
+                onClick={() => setMode("otp")}
+                className="block w-full text-center text-xs font-medium text-slate-400 transition-colors hover:text-slate-600"
+              >
+                이메일 인증번호로 로그인
+              </button>
+            </div>
+          ) : step === "email" ? (
             <div className="space-y-5">
               <div>
                 <label htmlFor="email" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -143,6 +218,13 @@ function LoginPageInner() {
               >
                 인증번호 받기
                 <ArrowRight className="h-4 w-4" aria-hidden={true} />
+              </button>
+
+              <button
+                onClick={() => setMode("password")}
+                className="block w-full text-center text-xs font-medium text-slate-400 transition-colors hover:text-slate-600"
+              >
+                아이디/비밀번호로 로그인
               </button>
 
               <Link
