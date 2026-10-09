@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   const amount = seatCount * TEACHER_SEAT_PRICE_KRW;
   const teacherId = auth.user.id;
-  const paymentId = `seat-${teacherId}-${crypto.randomUUID().slice(0, 8)}`;
+  const paymentId = `seat-${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`;
 
   // 첫 달 요금을 즉시 청구 — 실패하면 아무것도 저장하지 않는다(트랜잭션적 실패 처리)
   try {
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
   // 다음 달 정기 청구 예약 — Stripe와 달리 자동 반복이 없어 매번 다음 1건을 직접 예약해야 한다.
   try {
-    const nextPaymentId = `seat-${teacherId}-${crypto.randomUUID().slice(0, 8)}`;
+    const nextPaymentId = `seat-${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`;
     const scheduleResult = await createPaymentSchedule({
       paymentId: nextPaymentId,
       billingKey,

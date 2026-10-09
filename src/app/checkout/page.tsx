@@ -151,7 +151,7 @@ function CheckoutContent() {
         return;
       }
 
-      const paymentId = `report-${orderIdRef.current}-${crypto.randomUUID().slice(0, 8)}`;
+      const paymentId = `report-${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`;
 
       const response = await PortOne.requestPayment({
         storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,

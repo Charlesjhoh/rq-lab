@@ -104,7 +104,7 @@ async function handleSubscriptionChargeSucceeded(paymentId: string, billingKey: 
   if (!flipped) return; // 동시에 다른 경로에서 이미 처리됨
 
   // 다음 정기 청구 예약 — Stripe와 달리 자동 반복이 없어 매번 다음 1건을 직접 예약해야 한다.
-  const nextPaymentId = `seat-${sub.teacher_id}-${crypto.randomUUID().slice(0, 8)}`;
+  const nextPaymentId = `seat-${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`;
   const scheduleResult = await createPaymentSchedule({
     paymentId: nextPaymentId,
     billingKey,

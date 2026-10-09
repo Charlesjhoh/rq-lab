@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     const prorateAmount = Math.round(seatDiff * TEACHER_SEAT_PRICE_KRW * remainingRatio);
 
     if (prorateAmount > 0) {
-      const paymentId = `seat-${teacherId}-${crypto.randomUUID().slice(0, 8)}`;
+      const paymentId = `seat-${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`;
       try {
         await payWithBillingKey({
           paymentId,
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     }
 
     const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : new Date(Date.now() + PERIOD_MS);
-    const nextPaymentId = `seat-${teacherId}-${crypto.randomUUID().slice(0, 8)}`;
+    const nextPaymentId = `seat-${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`;
     const scheduleResult = await createPaymentSchedule({
       paymentId: nextPaymentId,
       billingKey,
