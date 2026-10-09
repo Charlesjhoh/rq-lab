@@ -25,6 +25,8 @@ function CheckoutContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [payError, setPayError] = useState('');
+  const [payerName, setPayerName] = useState('');
+  const [payerPhone, setPayerPhone] = useState('');
   const [ready, setReady] = useState(false);
 
   // 💥 즉시 반영되는 Ref 객체로 중복 호출 및 orderId 관리
@@ -134,6 +136,11 @@ function CheckoutContent() {
 
   const handlePay = async () => {
     if (!orderIdRef.current || isPaying) return;
+    const phoneDigits = payerPhone.replace(/\D/g, '');
+    if (!payerName.trim() || phoneDigits.length < 10) {
+      setPayError('결제자 이름과 휴대폰 번호를 입력해 주세요.');
+      return;
+    }
     setIsPaying(true);
     setPayError('');
 
@@ -154,7 +161,12 @@ function CheckoutContent() {
         totalAmount: priceInfo.final,
         currency: 'KRW',
         payMethod: 'CARD',
-        customer: session.user.email ? { email: session.user.email } : undefined,
+        // KG이니시스 V2는 이름·휴대폰·이메일이 모두 있어야 결제창이 열린다.
+        customer: {
+          fullName: payerName.trim(),
+          phoneNumber: phoneDigits,
+          email: session.user.email || undefined,
+        },
       });
 
       if (!response || response.code) {
@@ -236,6 +248,20 @@ function CheckoutContent() {
         </button>
       ) : ready ? (
         <div className="space-y-3">
+          <input
+            type="text"
+            placeholder="결제자 이름"
+            value={payerName}
+            onChange={(e) => setPayerName(e.target.value)}
+            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <input
+            type="tel"
+            placeholder="휴대폰 번호 (010-0000-0000)"
+            value={payerPhone}
+            onChange={(e) => setPayerPhone(e.target.value)}
+            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
           {payError && <p className="text-red-500 text-sm">{payError}</p>}
           <button
             type="button"

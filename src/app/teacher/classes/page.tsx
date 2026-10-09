@@ -72,6 +72,8 @@ function TeacherClassesPageInner() {
 
   const [seatInput, setSeatInput] = useState("5");
   const [seatBusy, setSeatBusy] = useState(false);
+  const [payerName, setPayerName] = useState("");
+  const [payerPhone, setPayerPhone] = useState("");
 
   const [currentTeacher, setCurrentTeacher] = useState<{ id: string; displayName: string | null; email: string | null } | null>(null);
   const [editingName, setEditingName] = useState(false);
@@ -188,6 +190,10 @@ function TeacherClassesPageInner() {
       return;
     }
     if (!currentTeacher) return;
+    if (!payerName.trim() || payerPhone.replace(/\D/g, "").length < 10) {
+      alert("결제자 이름과 휴대폰 번호를 입력해 주세요.");
+      return;
+    }
 
     setSeatBusy(true);
     try {
@@ -195,11 +201,14 @@ function TeacherClassesPageInner() {
       // 청구한다(Stripe Checkout 같은 호스팅 결제 페이지가 없어 직접 결제창을 띄우는 방식).
       const issueResponse = await PortOne.requestIssueBillingKey({
         storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
-        channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!,
+        channelKey: process.env.NEXT_PUBLIC_PORTONE_BILLING_CHANNEL_KEY!,
         billingKeyMethod: "CARD",
         issueName: "Read English Better 선생님 좌석 구독",
         customer: {
           customerId: currentTeacher.id,
+          // KG이니시스 V2는 이름·휴대폰·이메일이 모두 있어야 결제창이 열린다.
+          fullName: payerName.trim(),
+          phoneNumber: payerPhone.replace(/\D/g, ""),
           email: currentTeacher.email || undefined,
         },
       });
@@ -397,6 +406,22 @@ function TeacherClassesPageInner() {
           {!hasActiveSubscription ? (
             <div className="mt-3 space-y-3">
               <p className="text-sm text-slate-500">아직 구매한 좌석이 없습니다. 좌석 수를 정해서 구독을 시작하세요.</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="결제자 이름"
+                  value={payerName}
+                  onChange={(e) => setPayerName(e.target.value)}
+                  className="w-36 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                />
+                <input
+                  type="tel"
+                  placeholder="휴대폰 번호 (010-0000-0000)"
+                  value={payerPhone}
+                  onChange={(e) => setPayerPhone(e.target.value)}
+                  className="w-56 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                />
+              </div>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
