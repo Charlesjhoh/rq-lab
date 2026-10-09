@@ -203,7 +203,10 @@ function TeacherClassesPageInner() {
         storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
         channelKey: process.env.NEXT_PUBLIC_PORTONE_BILLING_CHANNEL_KEY!,
         billingKeyMethod: "CARD",
+        // KG이니시스 빌링키 발급은 주문번호(최대 40자)와 서비스 제공 주기를 요구한다.
+        issueId: `bk-${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`,
         issueName: "Read English Better 선생님 좌석 구독",
+        offerPeriod: { interval: "1m" },
         customer: {
           customerId: currentTeacher.id,
           // KG이니시스 V2는 이름·휴대폰·이메일이 모두 있어야 결제창이 열린다.
@@ -234,7 +237,8 @@ function TeacherClassesPageInner() {
       await loadData();
     } catch (err) {
       console.error(err);
-      alert("결제 요청 중 오류가 발생했습니다.");
+      // 포트원 SDK는 PG 오류를 예외로 던지므로 메시지를 그대로 보여줘야 원인을 알 수 있다.
+      alert(err instanceof Error && err.message ? `결제 요청 중 오류가 발생했습니다: ${err.message}` : "결제 요청 중 오류가 발생했습니다.");
     } finally {
       setSeatBusy(false);
     }

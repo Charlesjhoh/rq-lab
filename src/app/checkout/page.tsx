@@ -181,7 +181,7 @@ function CheckoutContent() {
       router.push(url.pathname + url.search);
     } catch (err) {
       console.error(err);
-      setPayError('결제 중 오류가 발생했습니다.');
+      setPayError(err instanceof Error && err.message ? `결제 중 오류가 발생했습니다: ${err.message}` : '결제 중 오류가 발생했습니다.');
     } finally {
       setIsPaying(false);
     }
