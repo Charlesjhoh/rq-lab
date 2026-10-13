@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import * as PortOne from "@portone/browser-sdk/v2";
+import { BILLING_CHANNELS, type PgId } from "@/lib/pg-channels";
 import { supabase } from "@/lib/supabase-client";
 import {
   Users,
@@ -74,6 +75,7 @@ function TeacherClassesPageInner() {
   const [seatBusy, setSeatBusy] = useState(false);
   const [payerName, setPayerName] = useState("");
   const [payerPhone, setPayerPhone] = useState("");
+  const [pg, setPg] = useState<PgId>(BILLING_CHANNELS[0]?.id ?? "inicis");
 
   const [currentTeacher, setCurrentTeacher] = useState<{ id: string; displayName: string | null; email: string | null } | null>(null);
   const [editingName, setEditingName] = useState(false);
@@ -195,18 +197,24 @@ function TeacherClassesPageInner() {
       return;
     }
 
+    const channel = BILLING_CHANNELS.find((c) => c.id === pg);
+    if (!channel?.billingChannelKey) {
+      alert("결제 채널이 설정되지 않았습니다.");
+      return;
+    }
+
     setSeatBusy(true);
     try {
       // 카드를 한 번 등록해서 빌링키를 발급받는다 — 이후 정기 청구는 이 빌링키로 서버가 직접
       // 청구한다(Stripe Checkout 같은 호스팅 결제 페이지가 없어 직접 결제창을 띄우는 방식).
       const issueResponse = await PortOne.requestIssueBillingKey({
         storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
-        channelKey: process.env.NEXT_PUBLIC_PORTONE_BILLING_CHANNEL_KEY!,
+        channelKey: channel.billingChannelKey,
         billingKeyMethod: "CARD",
         // KG이니시스 빌링키 발급은 주문번호(최대 40자)와 서비스 제공 주기를 요구한다.
         issueId: `bk-${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`,
         issueName: "Read English Better 선생님 좌석 구독",
-        offerPeriod: { interval: "1m" },
+        ...(pg === "inicis" ? { offerPeriod: { interval: "1m" as const } } : {}),
         customer: {
           customerId: currentTeacher.id,
           // KG이니시스 V2는 이름·휴대폰·이메일이 모두 있어야 결제창이 열린다.
@@ -426,6 +434,20 @@ function TeacherClassesPageInner() {
                   className="w-56 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
+              {BILLING_CHANNELS.length > 1 && (
+                <div className="flex gap-2">
+                  {BILLING_CHANNELS.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setPg(c.id)}
+                      className={`rounded-xl border px-3 py-2 text-sm ${pg === c.id ? "border-indigo-600 bg-indigo-50 font-semibold text-indigo-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <input
                   type="number"
