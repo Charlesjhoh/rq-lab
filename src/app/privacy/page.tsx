@@ -59,7 +59,7 @@ export default function PrivacyPolicyPage() {
             <p className="font-medium text-slate-700">마. 결제 시</p>
             <p>
               결제 상품 정보, 결제 금액, 주문 내역 — 카드번호 등 결제 수단 정보 자체는 회사
-              서버에 저장되지 않으며, 결제대행사(포트원, 토스페이먼츠)가 직접 처리·보관합니다.
+              서버에 저장되지 않으며, 결제대행사(포트원, KG이니시스)가 직접 처리·보관합니다.
             </p>
           </Section>
 
@@ -121,7 +121,7 @@ export default function PrivacyPolicyPage() {
                     <td className="py-2 pr-4">결제 연동 및 정기구독(좌석) 처리 중개</td>
                   </tr>
                   <tr>
-                    <td className="py-2 pr-4">토스페이먼츠 주식회사</td>
+                    <td className="py-2 pr-4">(주)케이지이니시스</td>
                     <td className="py-2 pr-4">신용·체크카드 결제 승인·처리</td>
                   </tr>
                   <tr>

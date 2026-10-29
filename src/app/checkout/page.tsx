@@ -6,7 +6,6 @@ import Link from 'next/link';
 import * as PortOne from '@portone/browser-sdk/v2';
 import { supabase } from '@/lib/supabase-client';
 import { PRODUCT_PRICES, PRODUCT_LABELS } from '@/lib/products';
-import { PAYMENT_CHANNELS, type PgId } from '@/lib/pg-channels';
 
 function CheckoutContent() {
   const router = useRouter();
@@ -28,7 +27,6 @@ function CheckoutContent() {
   const [payError, setPayError] = useState('');
   const [payerName, setPayerName] = useState('');
   const [payerPhone, setPayerPhone] = useState('');
-  const [pg, setPg] = useState<PgId>(PAYMENT_CHANNELS[0]?.id ?? 'inicis');
   const [ready, setReady] = useState(false);
 
   // 💥 즉시 반영되는 Ref 객체로 중복 호출 및 orderId 관리
@@ -153,17 +151,11 @@ function CheckoutContent() {
         return;
       }
 
-      const channel = PAYMENT_CHANNELS.find((c) => c.id === pg);
-      if (!channel?.channelKey) {
-        setPayError('결제 채널이 설정되지 않았습니다.');
-        return;
-      }
-
       const paymentId = `report-${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`;
 
       const response = await PortOne.requestPayment({
         storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
-        channelKey: channel.channelKey,
+        channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!,
         paymentId,
         orderName: PRODUCT_LABELS[productType] || productType,
         totalAmount: priceInfo.final,
@@ -270,20 +262,6 @@ function CheckoutContent() {
             onChange={(e) => setPayerPhone(e.target.value)}
             className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          {PAYMENT_CHANNELS.length > 1 && (
-            <div className="flex gap-2">
-              {PAYMENT_CHANNELS.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setPg(c.id)}
-                  className={`flex-1 border rounded-lg px-3 py-2 text-sm ${pg === c.id ? 'border-blue-600 bg-blue-50 text-blue-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          )}
           {payError && <p className="text-red-500 text-sm">{payError}</p>}
           <button
             type="button"

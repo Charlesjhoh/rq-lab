@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { FileText } from "lucide-react";
-import { PRODUCT_LABELS, PRODUCT_PRICES } from "@/lib/products";
+import { PRODUCT_LABELS, PRODUCT_PRICES, TEACHER_SEAT_PRICE_KRW } from "@/lib/products";
 
 const EFFECTIVE_DATE = "2026-08-10";
 
@@ -91,9 +91,12 @@ export default function TermsOfServicePage() {
                   {label}: ₩{PRODUCT_PRICES[key]?.toLocaleString()} (1회 결제)
                 </li>
               ))}
-              <li>선생님 좌석 구독: 등록 학생 수(좌석 수)에 따라 매월 정기 결제되는 구독형 상품</li>
+              <li>
+                선생님 좌석 구독: 좌석 1개당 월 ₩{TEACHER_SEAT_PRICE_KRW.toLocaleString()} — 등록 학생 수(좌석
+                수)에 따라 매월 정기 결제되는 구독형 상품
+              </li>
             </ul>
-            <p>결제는 결제대행사(포트원, 토스페이먼츠)를 통해 신용·체크카드로 처리됩니다.</p>
+            <p>결제는 결제대행사(포트원, KG이니시스)를 통해 신용·체크카드로 처리됩니다.</p>
           </Section>
 
           <Section title="제7조 (청약철회 및 환불)">
