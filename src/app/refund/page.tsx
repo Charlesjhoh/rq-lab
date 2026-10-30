@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { RotateCcw } from "lucide-react";
+import { PRODUCT_PRICES } from "@/lib/products";
 
 const EFFECTIVE_DATE = "2026-10-30";
 
@@ -53,12 +54,24 @@ export default function RefundPolicyPage() {
             </p>
           </Section>
 
-          <Section title="2. 단건 결제 상품(프리미엄 리포트 등)">
+          <Section title="2. 단건 결제 상품(프리미엄 리포트, 월 2회 패키지)">
             <p>
               이용자는 결제일로부터 7일 이내에 청약을 철회할 수 있습니다. 다만 「전자상거래 등에서의
               소비자보호에 관한 법률」 제17조 제2항에 따라, 리포트 콘텐츠를 실제로 열람한 경우에는
               콘텐츠 제공이 개시된 것으로 보아 청약철회가 제한될 수 있습니다. 열람 전 환불 요청은
               고객센터로 연락 주시면 지체 없이 처리해 드립니다.
+            </p>
+            <p>
+              월 2회 패키지는 크레딧 단위로 나누어 제공되는 상품으로, 결제일로부터 7일 이내에는
+              사용하지 않은 크레딧에 대해 청약을 철회할 수 있습니다. 이 경우 결제금액에서 사용한
+              크레딧 수 × 프리미엄 리포트 1회 열람 정가(₩{PRODUCT_PRICES.single_report.toLocaleString()})를
+              뺀 금액을 환불합니다(차감액이 결제금액 이상이면 환불액은 없습니다).
+            </p>
+            <p>
+              예) 월 2회 패키지(₩{PRODUCT_PRICES.package_2x_month.toLocaleString()}) 결제 후 크레딧
+              1개 사용 → ₩{PRODUCT_PRICES.package_2x_month.toLocaleString()} − ₩
+              {PRODUCT_PRICES.single_report.toLocaleString()} = ₩
+              {(PRODUCT_PRICES.package_2x_month - PRODUCT_PRICES.single_report).toLocaleString()} 환불
             </p>
           </Section>
 
