@@ -99,7 +99,7 @@ export default function TermsOfServicePage() {
             <p>결제는 결제대행사(포트원, KG이니시스)를 통해 신용·체크카드로 처리됩니다.</p>
           </Section>
 
-          <Section title="제7조 (청약철회 및 환불)">
+          <Section title="제7조 (청약철회, 교환 및 환불)">
             <p className="font-medium text-slate-700">가. 단건 결제 상품(프리미엄 리포트 등)</p>
             <p>
               이용자는 결제일로부터 7일 이내에 청약을 철회할 수 있습니다. 다만 「전자상거래 등에서의
@@ -114,10 +114,23 @@ export default function TermsOfServicePage() {
               해지 전까지 서비스를 계속 이용할 수 있습니다. 결제 오류 등 회사의 귀책사유가 있는
               경우 전액 환불합니다.
             </p>
-            <p className="font-medium text-slate-700">다. 환불 절차</p>
+            <p className="font-medium text-slate-700">다. 교환</p>
+            <p>
+              유료 서비스는 온라인으로 제공되는 디지털 콘텐츠로, 실물 상품과 같은 교환 대상이
+              아닙니다. 다른 상품으로 변경을 원하는 경우 본 조의 환불 기준에 따라 기존 결제를
+              환불받은 뒤 새로 구매하여야 합니다. 다만 회사의 귀책사유(결제 오류, 리포트 생성 오류,
+              콘텐츠 하자 등)로 정상적인 서비스를 제공받지 못한 경우, 이용자의 선택에 따라 동일
+              상품을 다시 제공하거나 전액 환불합니다.
+            </p>
+            <p className="font-medium text-slate-700">라. 환불 절차</p>
             <p>
               환불이 확정되면 결제수단과 동일한 방법으로, 영업일 기준 3~5일 이내 환불 처리됩니다.
-              환불 문의는 charles.j.h.oh@gmail.com으로 접수해 주시기 바랍니다.
+              환불 및 교환 문의는 고객센터(070-4519-5313) 또는 charles.j.h.oh@gmail.com으로 접수해
+              주시기 바랍니다. 자세한 내용은{" "}
+              <Link href="/refund" className="underline hover:text-slate-900">
+                교환 및 환불정책
+              </Link>
+              에서도 확인할 수 있습니다.
             </p>
           </Section>
 

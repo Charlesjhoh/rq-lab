@@ -29,6 +29,9 @@ export default function Footer() {
           <Link href="/privacy" className="hover:text-slate-900 hover:underline">
             개인정보처리방침
           </Link>
+          <Link href="/refund" className="hover:text-slate-900 hover:underline">
+            교환 및 환불정책
+          </Link>
         </div>
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
