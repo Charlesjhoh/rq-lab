@@ -61,6 +61,23 @@ export async function createPaymentSchedule(options: {
   });
 }
 
+// currentCancellableAmount를 넘기면 포트원이 잔액이 일치할 때만 취소한다 — 같은 주문을 동시에
+// 두 번 환불하려 해도 두 번째 요청은 잔액이 달라져 거부된다.
+export async function cancelPayment(options: {
+  paymentId: string;
+  amount: number;
+  reason: string;
+  currentCancellableAmount: number;
+}) {
+  return getPaymentClient().cancelPayment({
+    paymentId: options.paymentId,
+    amount: options.amount,
+    reason: options.reason,
+    requester: 'ADMIN',
+    currentCancellableAmount: options.currentCancellableAmount,
+  });
+}
+
 export async function revokePaymentSchedules(scheduleIds: string[]) {
   return getPaymentClient().paymentSchedule.revokePaymentSchedules({ scheduleIds });
 }

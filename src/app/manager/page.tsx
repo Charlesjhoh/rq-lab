@@ -16,6 +16,7 @@ import {
   UserCheck,
   Check,
   X,
+  RotateCcw,
 } from "lucide-react";
 
 type Stats = {
@@ -34,6 +35,22 @@ type OrderRow = {
   product_type: string;
   final_amount: number;
   status: string;
+  portone_payment_id: string | null;
+  refunded_amount?: number | null;
+};
+
+type RefundQuote = {
+  orderId: string;
+  productType: string;
+  paidAmount: number;
+  paidAt: string;
+  daysSincePaid: number;
+  withinWindow: boolean;
+  usedCredits: number | null;
+  totalCredits: number | null;
+  suggestedAmount: number;
+  formula: string;
+  notes: string[];
 };
 
 type SearchedUser = {
@@ -54,7 +71,18 @@ const STATUS_LABELS: Record<string, string> = {
   paid: "결제 완료",
   completed: "결제 완료",
   pending: "결제 대기",
+  refunded: "환불됨",
+  failed: "처리 실패",
 };
+
+function isRefundable(o: OrderRow) {
+  return (
+    (o.status === "paid" || o.status === "completed") &&
+    !!o.portone_payment_id &&
+    Number(o.final_amount) > 0 &&
+    !(Number(o.refunded_amount) > 0)
+  );
+}
 
 async function authedFetch(path: string, options: RequestInit = {}) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -91,6 +119,14 @@ export default function ManagerPage() {
   const [pendingTeachers, setPendingTeachers] = useState<PendingTeacher[]>([]);
   const [teachersLoading, setTeachersLoading] = useState(false);
   const [decidingId, setDecidingId] = useState<string | null>(null);
+
+  const [refundOrder, setRefundOrder] = useState<OrderRow | null>(null);
+  const [refundQuote, setRefundQuote] = useState<RefundQuote | null>(null);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refundError, setRefundError] = useState("");
+  const [refundLoading, setRefundLoading] = useState(false);
+  const [refunding, setRefunding] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -241,6 +277,79 @@ export default function ManagerPage() {
       setGrantMessage("❌ 지급 중 오류가 발생했습니다.");
     } finally {
       setGranting(false);
+    }
+  };
+
+  const openRefund = async (order: OrderRow) => {
+    setRefundOrder(order);
+    setRefundQuote(null);
+    setRefundAmount("");
+    setRefundReason("고객 요청에 의한 청약철회");
+    setRefundError("");
+    setRefundLoading(true);
+
+    try {
+      const res = await authedFetch(`/api/manager/orders/refund?orderId=${encodeURIComponent(order.id)}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setRefundError(data.error || "환불 정보를 불러오지 못했습니다.");
+        return;
+      }
+      setRefundQuote(data.quote);
+      setRefundAmount(String(data.quote.suggestedAmount));
+    } catch (err) {
+      console.error(err);
+      setRefundError("환불 정보를 불러오는 중 오류가 발생했습니다.");
+    } finally {
+      setRefundLoading(false);
+    }
+  };
+
+  const closeRefund = () => {
+    if (refunding) return;
+    setRefundOrder(null);
+    setRefundQuote(null);
+  };
+
+  const handleRefund = async () => {
+    if (!refundOrder || !refundQuote) return;
+    const amount = Number(refundAmount);
+    if (!Number.isInteger(amount) || amount <= 0 || amount > refundQuote.paidAmount) {
+      setRefundError(`환불 금액은 1원 ~ ₩${refundQuote.paidAmount.toLocaleString()} 사이 정수여야 합니다.`);
+      return;
+    }
+    if (!refundReason.trim()) {
+      setRefundError("환불 사유를 입력해 주세요.");
+      return;
+    }
+    const who = refundOrder.student_name || refundOrder.email || "이용자";
+    if (!confirm(`${who}님 결제 건을 ₩${amount.toLocaleString()} 환불합니다. 카드 취소가 바로 진행되며 되돌릴 수 없습니다. 계속할까요?`)) {
+      return;
+    }
+
+    setRefunding(true);
+    setRefundError("");
+    try {
+      const res = await authedFetch("/api/manager/orders/refund", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: refundOrder.id, amount, reason: refundReason.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setRefundError(data.error || "환불에 실패했습니다.");
+        return;
+      }
+      alert(`₩${amount.toLocaleString()} ${data.fullRefund ? "전액" : "부분"}환불이 완료되었습니다.`);
+      setRefundOrder(null);
+      setRefundQuote(null);
+      loadOrders(orderSearch);
+      loadStats();
+    } catch (err) {
+      console.error(err);
+      setRefundError("환불 처리 중 오류가 발생했습니다. 결제 내역을 새로고침해 상태를 확인해 주세요.");
+    } finally {
+      setRefunding(false);
     }
   };
 
@@ -399,7 +508,8 @@ export default function ManagerPage() {
                       <th className="py-2 pr-3 font-medium">학생</th>
                       <th className="py-2 pr-3 font-medium">상품</th>
                       <th className="py-2 pr-3 font-medium">금액</th>
-                      <th className="py-2 font-medium">상태</th>
+                      <th className="py-2 pr-3 font-medium">상태</th>
+                      <th className="py-2 font-medium"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -416,16 +526,34 @@ export default function ManagerPage() {
                           {PRODUCT_LABELS[o.product_type] || o.product_type}
                         </td>
                         <td className="py-2.5 pr-3 text-slate-900">₩{Number(o.final_amount || 0).toLocaleString()}</td>
-                        <td className="py-2.5">
+                        <td className="py-2.5 pr-3">
                           <span
                             className={
                               o.status === "paid" || o.status === "completed"
                                 ? "font-medium text-emerald-600"
+                                : o.status === "refunded"
+                                ? "font-medium text-red-500"
                                 : "text-slate-400"
                             }
                           >
                             {STATUS_LABELS[o.status] || o.status}
                           </span>
+                          {o.status !== "refunded" && Number(o.refunded_amount) > 0 && (
+                            <div className="text-xs text-red-500">
+                              ₩{Number(o.refunded_amount).toLocaleString()} 부분환불
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-2.5 text-right">
+                          {isRefundable(o) && (
+                            <button
+                              onClick={() => openRefund(o)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                            >
+                              <RotateCcw className="h-3 w-3" aria-hidden={true} />
+                              환불
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -538,6 +666,109 @@ export default function ManagerPage() {
           </aside>
         </div>
       </div>
+      {refundOrder && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4"
+          onClick={closeRefund}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                  <RotateCcw className="h-4 w-4 text-indigo-500" aria-hidden={true} />
+                  환불 처리
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  {refundOrder.student_name || "-"} · {refundOrder.email || "-"}
+                </p>
+              </div>
+              <button onClick={closeRefund} className="text-slate-400 hover:text-slate-600" aria-label="닫기">
+                <X className="h-4 w-4" aria-hidden={true} />
+              </button>
+            </div>
+
+            {refundLoading ? (
+              <p className="py-6 text-center text-sm text-slate-400">환불 정보를 계산하는 중...</p>
+            ) : refundQuote ? (
+              <div className="mt-4 space-y-3">
+                <dl className="space-y-1.5 rounded-xl bg-slate-50 p-3 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-slate-500">상품</dt>
+                    <dd className="text-slate-900">{PRODUCT_LABELS[refundQuote.productType] || refundQuote.productType}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-slate-500">결제금액</dt>
+                    <dd className="text-slate-900">₩{refundQuote.paidAmount.toLocaleString()}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-slate-500">결제일</dt>
+                    <dd className={refundQuote.withinWindow ? "text-slate-900" : "font-medium text-amber-600"}>
+                      {new Date(refundQuote.paidAt).toLocaleDateString("ko-KR")} ({refundQuote.daysSincePaid}일 경과)
+                    </dd>
+                  </div>
+                  {refundQuote.usedCredits !== null && (
+                    <div className="flex justify-between">
+                      <dt className="text-slate-500">사용 크레딧</dt>
+                      <dd className="text-slate-900">
+                        {refundQuote.usedCredits} / {refundQuote.totalCredits}회
+                      </dd>
+                    </div>
+                  )}
+                  <div className="border-t border-slate-200 pt-1.5 text-xs text-slate-500">
+                    약관 기준: {refundQuote.formula}
+                  </div>
+                </dl>
+
+                {refundQuote.notes.length > 0 && (
+                  <ul className="space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    {refundQuote.notes.map((n) => (
+                      <li key={n}>⚠️ {n}</li>
+                    ))}
+                  </ul>
+                )}
+
+                <label className="block text-xs text-slate-500">
+                  환불 금액(원)
+                  <input
+                    type="number"
+                    min={1}
+                    max={refundQuote.paidAmount}
+                    value={refundAmount}
+                    onChange={(e) => setRefundAmount(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
+                  />
+                </label>
+                <label className="block text-xs text-slate-500">
+                  환불 사유
+                  <input
+                    value={refundReason}
+                    onChange={(e) => setRefundReason(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm"
+                  />
+                </label>
+                <p className="text-xs text-slate-400">
+                  환불하면 패키지의 남은 크레딧은 0이 되고, 단건 리포트는 전액환불일 때만 다시 잠깁니다.
+                </p>
+
+                {refundError && <p className="text-xs text-red-500">❌ {refundError}</p>}
+
+                <button
+                  onClick={handleRefund}
+                  disabled={refunding || !(Number(refundAmount) > 0)}
+                  className="w-full rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {refunding ? "환불 처리 중..." : `₩${(Number(refundAmount) || 0).toLocaleString()} 환불하기`}
+                </button>
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-red-500">❌ {refundError}</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -162,6 +162,11 @@ export default async function MyPage() {
                       >
                         {STATUS_LABELS[order.status] || order.status}
                       </span>
+                      {order.status !== "refunded" && Number(order.refunded_amount) > 0 && (
+                        <span className="ml-1 text-xs text-red-500">
+                          (₩{Number(order.refunded_amount).toLocaleString()} 부분환불)
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

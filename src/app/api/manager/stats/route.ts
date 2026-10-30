@@ -9,9 +9,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
+  // select('*') — refunded_amount(0013 마이그레이션) 적용 전에도 통계가 깨지지 않도록 컬럼을 명시하지 않는다
   const { data: paidOrders, error: ordersError } = await supabaseAdmin
     .from('orders')
-    .select('product_type, final_amount, created_at')
+    .select('*')
     .in('status', ['paid', 'completed']);
 
   if (ordersError) {
@@ -27,7 +28,8 @@ export async function GET(req: NextRequest) {
   let packageCount = 0;
 
   for (const o of paidOrders || []) {
-    const amount = Number(o.final_amount) || 0;
+    // 부분환불된 주문은 환불액을 뺀 실제 매출만 집계한다
+    const amount = (Number(o.final_amount) || 0) - (Number(o.refunded_amount) || 0);
     totalRevenue += amount;
     if (new Date(o.created_at) >= monthStart) monthRevenue += amount;
     if (o.product_type === 'package_2x_month') packageCount += 1;

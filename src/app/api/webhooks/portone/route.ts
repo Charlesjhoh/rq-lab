@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { grantEntitlementForOrder } from '@/lib/payments';
 import { getPayment, createPaymentSchedule, verifyPortOneWebhook } from '@/lib/portone';
 import { TEACHER_SEAT_PRICE_KRW } from '@/lib/products';
+import { revokeEntitlementForOrder } from '@/lib/refunds';
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -35,7 +36,8 @@ export async function POST(req: NextRequest) {
       await handleTransactionCancelled(webhook.data.paymentId);
     }
 
-    // 4. 결제 부분 취소는 재량 환불일 수 있어 자동 롤백하지 않고 로그만 남긴다
+    // 4. 결제 부분 취소는 매니저 환불 API(/api/manager/orders/refund)가 직접 DB에 반영하므로
+    // 여기서는 로그만 남긴다(포트원 콘솔에서 직접 한 부분취소는 자동 회수하지 않음)
     if (webhook.type === 'Transaction.PartialCancelled') {
       console.log(`ℹ️ 부분 취소 감지(자동 회수 안 함) — paymentId ${webhook.data.paymentId}`);
     }
@@ -140,18 +142,7 @@ async function handleTransactionCancelled(paymentId: string) {
 
   if (!order || order.status !== 'paid') return;
 
-  if (order.product_type === 'single_report' && order.result_id) {
-    await supabaseAdmin
-      .from('reading_results')
-      .update({ is_unlocked: false })
-      .eq('id', order.result_id)
-      .eq('unlock_order_id', order.id);
-  } else if (order.product_type === 'package_2x_month') {
-    await supabaseAdmin
-      .from('credit_packages')
-      .update({ remaining_credits: 0 })
-      .eq('order_id', order.id);
-  }
+  await revokeEntitlementForOrder(order, true);
 
   await supabaseAdmin
     .from('orders')

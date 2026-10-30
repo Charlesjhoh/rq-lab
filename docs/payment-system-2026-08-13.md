@@ -113,6 +113,16 @@ grantEntitlementForOrder(orderId)  [src/lib/payments.ts]
 
 ---
 
+### 1-7. 매니저 환불 (전액/부분)
+
+`/manager` 결제 내역의 "환불" 버튼 → [`/api/manager/orders/refund`](../src/app/api/manager/orders/refund/route.ts) (role=manager 전용). 이용약관 제7조 기준:
+
+- `GET ?orderId=` — 미리보기. 월 2회 패키지는 `결제금액 − 사용 크레딧 수 × 1회 정가(₩19,000)`, 단건 리포트는 전액을 제안액으로 계산([`src/lib/refunds.ts`](../src/lib/refunds.ts)). 결제 후 7일 경과, 단건 리포트 열람 가능성 등은 경고로만 보여주고 매니저가 금액을 직접 조정할 수 있다.
+- `POST { orderId, amount, reason }` — 포트원 `cancelPayment`를 `currentCancellableAmount`와 함께 호출(동시 중복 환불 방지) → 성공 후 이용권 회수(패키지 남은 크레딧 0, 단건 리포트는 전액환불일 때만 재잠금) → `orders.refunded_amount/refunded_at/refund_reason/refunded_by` 기록. 전액이면 `status = 'refunded'`, 부분이면 `paid` 유지.
+- 주문당 1회만 환불 가능(`refunded_amount > 0`이면 거부). 통계 매출은 `final_amount − refunded_amount`로 집계.
+- [`0013_order_refunds.sql`](../supabase/migrations/0013_order_refunds.sql)을 먼저 실행해야 한다. 실행 전에는 주문 조회 단계에서 실패하므로 포트원 취소까지 가지 않는다.
+- 포트원 콘솔에서 직접 한 전액취소는 기존처럼 웹훅이 이용권을 회수하지만, 부분취소는 웹훅이 로그만 남기므로 반드시 이 화면에서 처리할 것.
+
 ## 2. 선생님 좌석 구독
 
 ### 2-1. 상품 정의
