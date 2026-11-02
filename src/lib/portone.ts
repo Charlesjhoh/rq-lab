@@ -1,9 +1,8 @@
 import { PaymentClient, Webhook } from '@portone/server-sdk';
 
 const STORE_ID = process.env.NEXT_PUBLIC_PORTONE_STORE_ID!;
-// KG이니시스는 일반결제와 정기결제(빌링) MID가 분리돼 있어 채널도 따로 쓴다.
-// 서버에서 하는 결제는 모두 빌링키 결제라 정기결제 채널만 필요하다.
-const BILLING_CHANNEL_KEY = process.env.NEXT_PUBLIC_PORTONE_BILLING_CHANNEL_KEY!;
+// 서버에서 하는 결제는 모두 빌링키 결제다. channelKey를 생략하면 포트원이 빌링키를
+// 발급한 채널로 결제하므로, PG를 바꿔도 기존 빌링키가 그대로 청구된다.
 
 function getApiSecret() {
   const secret = process.env.PORTONE_API_SECRET;
@@ -31,7 +30,6 @@ export async function payWithBillingKey(options: {
   return getPaymentClient().payWithBillingKey({
     paymentId: options.paymentId,
     billingKey: options.billingKey,
-    channelKey: BILLING_CHANNEL_KEY,
     orderName: options.orderName,
     amount: { total: options.amountTotal },
     currency: 'KRW',
@@ -51,8 +49,7 @@ export async function createPaymentSchedule(options: {
     paymentId: options.paymentId,
     payment: {
       billingKey: options.billingKey,
-      channelKey: BILLING_CHANNEL_KEY,
-      orderName: options.orderName,
+        orderName: options.orderName,
       amount: { total: options.amountTotal },
       currency: 'KRW',
       customer: options.customerId ? { id: options.customerId } : undefined,

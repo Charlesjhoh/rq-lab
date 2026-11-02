@@ -155,13 +155,13 @@ function CheckoutContent() {
 
       const response = await PortOne.requestPayment({
         storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
-        channelKey: process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!,
+        channelKey: process.env.NEXT_PUBLIC_PORTONE_TOSS_CHANNEL_KEY!,
         paymentId,
         orderName: PRODUCT_LABELS[productType] || productType,
         totalAmount: priceInfo.final,
         currency: 'KRW',
         payMethod: 'CARD',
-        // KG이니시스 V2는 이름·휴대폰·이메일이 모두 있어야 결제창이 열린다.
+        // 결제창에 구매자 정보를 미리 채워 넣는다.
         customer: {
           fullName: payerName.trim(),
           phoneNumber: phoneDigits,

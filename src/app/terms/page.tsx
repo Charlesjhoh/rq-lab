@@ -96,7 +96,7 @@ export default function TermsOfServicePage() {
                 수)에 따라 매월 정기 결제되는 구독형 상품
               </li>
             </ul>
-            <p>결제는 결제대행사(포트원, KG이니시스)를 통해 신용·체크카드로 처리됩니다.</p>
+            <p>결제는 결제대행사(포트원, 토스페이먼츠)를 통해 신용·체크카드로 처리됩니다.</p>
           </Section>
 
           <Section title="제7조 (청약철회, 교환 및 환불)">

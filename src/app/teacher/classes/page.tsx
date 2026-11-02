@@ -202,15 +202,15 @@ function TeacherClassesPageInner() {
       // 청구한다(Stripe Checkout 같은 호스팅 결제 페이지가 없어 직접 결제창을 띄우는 방식).
       const issueResponse = await PortOne.requestIssueBillingKey({
         storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
-        channelKey: process.env.NEXT_PUBLIC_PORTONE_BILLING_CHANNEL_KEY!,
+        // 토스페이먼츠 빌링 채널을 따로 받지 않았다면 일반결제 채널로 발급한다.
+        channelKey:
+          process.env.NEXT_PUBLIC_PORTONE_TOSS_BILLING_CHANNEL_KEY || process.env.NEXT_PUBLIC_PORTONE_TOSS_CHANNEL_KEY!,
         billingKeyMethod: "CARD",
-        // KG이니시스 빌링키 발급은 주문번호(최대 40자)와 서비스 제공 주기를 요구한다.
         issueId: `bk-${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`,
         issueName: "Read English Better 선생님 좌석 구독",
-        offerPeriod: { interval: "1m" },
         customer: {
           customerId: currentTeacher.id,
-          // KG이니시스 V2는 이름·휴대폰·이메일이 모두 있어야 결제창이 열린다.
+          // 결제창에 구매자 정보를 미리 채워 넣는다.
           fullName: payerName.trim(),
           phoneNumber: payerPhone.replace(/\D/g, ""),
           email: currentTeacher.email || undefined,
