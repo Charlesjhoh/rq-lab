@@ -108,7 +108,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-white via-slate-50 to-indigo-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-white via-slate-50 to-indigo-50 flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-xl mx-auto flex flex-col items-center">
 
         {/* 1부: 서비스 소개 및 안내 카드 */}
