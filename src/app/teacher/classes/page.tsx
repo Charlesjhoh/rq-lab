@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import * as PortOne from "@portone/browser-sdk/v2";
 import { supabase } from "@/lib/supabase-client";
-import { TEACHER_SEAT_PRICE_KRW } from "@/lib/products";
+import { TEACHER_SEAT_MAX, TEACHER_SEAT_PRICE_KRW } from "@/lib/products";
 import {
   Users,
   BarChart3,
@@ -190,6 +190,10 @@ function TeacherClassesPageInner() {
       alert("좌석 수를 올바르게 입력해 주세요.");
       return;
     }
+    if (seats > TEACHER_SEAT_MAX) {
+      alert(`좌석은 최대 ${TEACHER_SEAT_MAX}석까지 구매할 수 있습니다.`);
+      return;
+    }
     if (!currentTeacher) return;
     if (!payerName.trim() || payerPhone.replace(/\D/g, "").length < 10) {
       alert("결제자 이름과 휴대폰 번호를 입력해 주세요.");
@@ -249,6 +253,10 @@ function TeacherClassesPageInner() {
     const seats = Number(seatInput);
     if (!Number.isInteger(seats) || seats < 1) {
       alert("좌석 수를 올바르게 입력해 주세요.");
+      return;
+    }
+    if (seats > TEACHER_SEAT_MAX) {
+      alert(`좌석은 최대 ${TEACHER_SEAT_MAX}석까지 구매할 수 있습니다.`);
       return;
     }
 
@@ -412,7 +420,7 @@ function TeacherClassesPageInner() {
             <div className="mt-3 space-y-3">
               <p className="text-sm text-slate-500">아직 구매한 좌석이 없습니다. 좌석 수를 정해서 구독을 시작하세요.</p>
               <p className="text-sm text-slate-500">
-                좌석 1개당 월 ₩{TEACHER_SEAT_PRICE_KRW.toLocaleString()} · 매월 자동 결제되며 언제든 해지할 수 있습니다.
+                좌석 1개당 월 ₩{TEACHER_SEAT_PRICE_KRW.toLocaleString()} (최대 {TEACHER_SEAT_MAX}석) · 매월 자동 결제되며 언제든 해지할 수 있습니다.
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <input
@@ -434,6 +442,7 @@ function TeacherClassesPageInner() {
                 <input
                   type="number"
                   min={1}
+                  max={TEACHER_SEAT_MAX}
                   value={seatInput}
                   onChange={(e) => setSeatInput(e.target.value)}
                   className="w-28 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -479,6 +488,7 @@ function TeacherClassesPageInner() {
                 <input
                   type="number"
                   min={usedSeats || 1}
+                  max={TEACHER_SEAT_MAX}
                   value={seatInput}
                   onChange={(e) => setSeatInput(e.target.value)}
                   className="w-28 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"

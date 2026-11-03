@@ -8,6 +8,8 @@ export const MANAGER_GRANT_MAX_DAYS = 180;
 
 // 선생님 좌석 구독 — 좌석 1개당 월 가격 (포트원+토스페이먼츠, 이 레포가 직접 가격을 관리)
 export const TEACHER_SEAT_PRICE_KRW = 15000;
+// 좌석 수 상한 — PG 심사에 신고한 1회 최대 청구액(200석 × 15,000원 = 3,000,000원)의 근거
+export const TEACHER_SEAT_MAX = 200;
 
 export const PRODUCT_PRICES: Record<string, number> = {
   single_report: 19000,

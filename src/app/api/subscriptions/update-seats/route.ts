@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, requireRole } from '@/lib/supabase-admin';
 import { payWithBillingKey, createPaymentSchedule, revokePaymentSchedules } from '@/lib/portone';
-import { TEACHER_SEAT_PRICE_KRW } from '@/lib/products';
+import { TEACHER_SEAT_MAX, TEACHER_SEAT_PRICE_KRW } from '@/lib/products';
 
 const SEAT_ORDER_NAME = 'Read English Better 선생님 좌석 구독';
 const PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
@@ -18,6 +18,9 @@ export async function POST(req: NextRequest) {
   const seatCount = Number(body.seatCount);
   if (!Number.isInteger(seatCount) || seatCount < 1) {
     return NextResponse.json({ error: '좌석 수가 올바르지 않습니다.' }, { status: 400 });
+  }
+  if (seatCount > TEACHER_SEAT_MAX) {
+    return NextResponse.json({ error: `좌석은 최대 ${TEACHER_SEAT_MAX}석까지 구매할 수 있습니다.` }, { status: 400 });
   }
 
   const { data: subscription } = await supabaseAdmin
