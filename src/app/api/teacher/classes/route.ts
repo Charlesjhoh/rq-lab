@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, requireRole } from '@/lib/supabase-admin';
+import { getSubscriptionState } from '@/lib/subscription-state';
 
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // 0/O, 1/I 제외
 
@@ -39,6 +40,7 @@ export async function GET(req: NextRequest) {
     ? {
         seat_count: subscription.seat_count,
         status: subscription.status,
+        state: getSubscriptionState(subscription),
         current_period_end: subscription.current_period_end,
         cancel_at_period_end: subscription.cancel_at_period_end,
         hasBillingKey: !!subscription.portone_billing_key,

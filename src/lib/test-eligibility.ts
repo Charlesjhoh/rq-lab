@@ -1,11 +1,10 @@
 import { supabaseAdmin } from "./supabase-admin";
+import { getSubscriptionState, hasSubscriptionAccess } from "./subscription-state";
 
 // 1인당 하루 응시 가능 테스트 수. Azure Speech/OpenAI 호출이 건당 실비용이 드는데
 // 응시 자체에는 크레딧/구독 체크가 전혀 없어서, 계정만 만들면 무제한으로 유료 API를
 // 두드릴 수 있었다 — 그 비용 남용을 막기 위한 최소한의 장치.
 export const DAILY_TEST_LIMIT = 5;
-
-const ACTIVE_SUBSCRIPTION_STATUSES = ["active", "trialing"];
 
 function getKstMidnightUtc(): Date {
   const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -55,11 +54,11 @@ export async function isTeacherSubscriptionInactive(classId: string): Promise<bo
 
   const { data: sub } = await supabaseAdmin
     .from("teacher_subscriptions")
-    .select("status")
+    .select("status, current_period_end, cancel_at_period_end, portone_billing_key")
     .eq("teacher_id", klass.teacher_id)
     .maybeSingle();
 
-  return !sub || !ACTIVE_SUBSCRIPTION_STATUSES.includes(sub.status);
+  return !hasSubscriptionAccess(getSubscriptionState(sub));
 }
 
 // 리딩테스트 응시 가능 여부를 판정한다. 두 가지를 본다:

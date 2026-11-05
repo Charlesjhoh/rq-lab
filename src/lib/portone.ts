@@ -49,7 +49,7 @@ export async function createPaymentSchedule(options: {
     paymentId: options.paymentId,
     payment: {
       billingKey: options.billingKey,
-        orderName: options.orderName,
+      orderName: options.orderName,
       amount: { total: options.amountTotal },
       currency: 'KRW',
       customer: options.customerId ? { id: options.customerId } : undefined,
@@ -73,6 +73,21 @@ export async function cancelPayment(options: {
     requester: 'ADMIN',
     currentCancellableAmount: options.currentCancellableAmount,
   });
+}
+
+// 포트원은 고객 ID로 결제를 검색할 수 없어 빌링키로 조회한다.
+export async function getBillingKeyPayments(billingKey: string) {
+  const { items } = await getPaymentClient().getPayments({
+    page: { number: 0, size: 12 },
+    filter: {
+      storeId: STORE_ID,
+      status: ['PAID', 'PARTIAL_CANCELLED', 'CANCELLED'],
+      textSearch: [{ field: 'BILLING_KEY', value: billingKey }],
+      sortBy: 'STATUS_CHANGED_AT',
+      sortOrder: 'DESC',
+    },
+  });
+  return items;
 }
 
 export async function revokePaymentSchedules(scheduleIds: string[]) {

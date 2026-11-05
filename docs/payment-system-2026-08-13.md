@@ -145,11 +145,12 @@ Stripe Price 객체가 아니라 이 레포가 직접 가격을 관리한다.
        │  billingKey 발급됨
        ▼
 POST /api/subscriptions/checkout  (role=teacher, body: { seatCount, billingKey })
-  - 이미 active/trialing/past_due 구독 있으면 거부(좌석 변경 API를 쓰라고 안내)
+  - 이미 구독 중이면 거부(좌석 변경 API를 쓰라고 안내). 해지 후 이용 기간이 남아 있어도 거부.
+    past_due는 허용 — 카드를 다시 등록하면 결제 후 구독이 복구된다
   - 첫 달 요금(seatCount × TEACHER_SEAT_PRICE_KRW)을 그 빌링키로 즉시 청구
     (POST /payments/{id}/billing-key) — 실패하면 아무것도 저장하지 않고 에러 반환
   - 성공하면 teacher_subscriptions upsert: portone_billing_key, seat_count,
-    status='active', current_period_end=now+30일
+    status='active', current_period_end=한 달 뒤 같은 날(addMonths)
   - 다음 달 청구를 위한 예약결제 생성(POST /payments/{id}/schedule, timeToPay=current_period_end),
     반환된 스케줄 id를 next_schedule_id에 저장
 ```
@@ -158,7 +159,7 @@ POST /api/subscriptions/checkout  (role=teacher, body: { seatCount, billingKey }
 `Transaction.Failed`(실패) 웹훅으로 들어온다(2-3 참고). Stripe와 달리 자동 반복이 없어서, 정기 청구가 성공할
 때마다 **다음 1건을 웹훅 핸들러가 직접 다시 예약**해야 체인이 끊기지 않는다.
 
-구독을 해지하면(2-4 참고) `status=canceled`로 갱신(기존 학생의 `class_id`는 건드리지 않음 — 강제 탈퇴는
+구독을 해지하면(2-3 참고) 결제한 기간 끝까지 이용할 수 있고, 그 뒤 구독이 끊긴다(기존 학생의 `class_id`는 건드리지 않음 — 강제 탈퇴는
 스코프 밖. 대신 mypage에 사전 고지 배너가 뜬다 — 2-6 참고).
 
 ### 2-3. 좌석 수 변경 / 정기 청구 / 웹훅
@@ -169,16 +170,23 @@ POST /api/subscriptions/checkout  (role=teacher, body: { seatCount, billingKey }
     직접 구현). 실패하면 좌석 수는 그대로 두고 에러 반환.
   - **줄일 때**: 즉시 환불 없이 `seat_count`만 갱신 — 다음 결제일부터 적은 금액이 반영된다(이번 주기 남은
     기간은 이미 낸 돈 그대로 사용).
-  - 어느 쪽이든 기존 `next_schedule_id` 예약을 취소하고 새 좌석 수 기준 금액으로 다음 예약을 다시 만든다.
-- **웹훅 `POST /api/webhooks/portone`** (`Transaction.Paid`, 빌링키가 있는 결제 = 정기 청구):
-  `teacher_subscriptions.portone_billing_key`로 매칭 → `current_period_end`를 30일 뒤로 갱신하고 다음
-  예약결제를 새로 생성. `last_charged_payment_id`로 같은 결제를 두 번 처리하지 않도록 멱등 처리(첫 결제는
-  `subscriptions/checkout`에서 이미 동기 처리되지만 같은 웹훅이 뒤이어 들어올 수 있음).
-- **웹훅 `Transaction.Failed`** (빌링키 결제): `status='past_due'`로 변경. 자동 재시도는 없음(최소 구현,
-  후속 조치로 문서화 — 4번 참고).
-- **`POST /api/subscriptions/cancel`** — 예약된 다음 청구를 취소(`DELETE /payment-schedules`)하고
-  빌링키를 삭제(`DELETE /billing-keys/{key}`) 후 `status='canceled'`. **카드 변경은 "해지 후 재등록"으로
-  단순화**했다(전용 카드교체 플로우는 스코프 밖).
+  - 어느 쪽이든 먼저 기존 `next_schedule_id` 예약을 취소하고(실패하면 아무것도 바꾸지 않음) 새 좌석 수 기준
+    금액으로 다음 예약을 다시 만든다. 차액 결제가 실패하면 이전 금액으로 예약을 되살린다.
+- **웹훅 `POST /api/webhooks/portone`** (`Transaction.Paid`, `payment.scheduleId`가 있는 결제 = 정기 청구):
+  `teacher_subscriptions.portone_billing_key`로 매칭 → `current_period_end`를 한 달 뒤로 갱신하고 다음
+  예약결제를 새로 생성. 첫 결제와 좌석 증설 차액도 빌링키 결제지만 `scheduleId`가 없어 무시한다(API가
+  동기 처리). `last_charged_payment_id`로 멱등 처리하고, 예약 단계에서 실패하면 500을 반환해 재전송 때
+  예약만 다시 시도한다.
+- **웹훅 `Transaction.Failed`** (`scheduleId`가 있는 결제만): `status='past_due'`로 변경. 자동 재시도는
+  없고, 클래스 관리 화면에서 카드를 다시 등록해 복구한다(4번 참고).
+- **`POST /api/subscriptions/cancel`** — 예약된 다음 청구를 취소하고(실패하면 해지를 완료하지 않음) 빌링키를
+  삭제한 뒤 `cancel_at_period_end=true`로 둔다. `status`는 active로 남고 기간이 끝나면 상태 판정이 inactive가
+  된다. past_due에서 해지하면 바로 `status='canceled'`. **카드 변경은 "해지 후 재등록"으로 단순화**했다.
+- **구독 상태 판정** — `status`만 보지 말고 [`getSubscriptionState`](../src/lib/subscription-state.ts)를
+  쓴다(active/canceling/past_due/inactive). 빌링키가 있는 구독은 결제일에서 3일이 지나도 갱신되지 않으면
+  past_due로 판정한다(청구 예약 실패 대비). 빌링키가 없는 이전 구독은 `status`만 본다.
+- **`GET /api/subscriptions/payments`** — 좌석 결제는 `orders`에 남지 않아, 현재 빌링키로 포트원에서 내역을
+  조회해 클래스 관리 화면에 보여준다. 재등록 전 카드의 내역은 나오지 않는다.
 
 ### 2-4. 학생이 반에 들어오는 흐름 (좌석 소비)
 
@@ -232,7 +240,8 @@ DB 트리거 enforce_class_seat_limit (2026-08-13 추가, 최종 관문)
 
 ## 4. 알려진 제약 / 후속 조치 필요
 
-- **정기 청구 실패(dunning) 처리가 최소 구현** — `Transaction.Failed`로 `status='past_due'`만 남기고 자동 재시도는 없음. 선생님이 인지 후 재구독하는 흐름에 의존
+- **정기 청구 실패(dunning) 처리가 최소 구현** — 자동 재시도와 메일 알림은 없음. 클래스 관리 화면 안내를 보고 선생님이 카드를 다시 등록하는 흐름에 의존
+- **좌석 결제 환불 화면 없음** — 매니저 환불은 `orders`만 지원. 좌석 결제는 포트원 콘솔에서 수동 처리하며 구독 상태에 자동 반영되지 않음
 - **카드 변경 전용 플로우 없음** — "해지 후 재등록"으로 단순화(2-3 참고)
 - **환불 부분 케이스 미자동화** — 부분 취소, 디스퓨트는 여전히 수동 대응 필요
 - **매니저 수동 크레딧 지급 알림 없음** (1-6 참고) — 상한과 로그는 있지만 실시간 알림 인프라는 없음

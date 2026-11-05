@@ -3,8 +3,9 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { grantEntitlementForOrder } from '@/lib/payments';
-import { getPayment, createPaymentSchedule, verifyPortOneWebhook } from '@/lib/portone';
-import { TEACHER_SEAT_PRICE_KRW } from '@/lib/products';
+import { getPayment, verifyPortOneWebhook } from '@/lib/portone';
+import { addMonths } from '@/lib/subscription-state';
+import { scheduleNextSeatCharge } from '@/lib/subscription-billing';
 import { revokeEntitlementForOrder } from '@/lib/refunds';
 
 export async function POST(req: NextRequest) {
@@ -54,7 +55,10 @@ async function handleTransactionPaid(paymentId: string) {
   if (payment.status !== 'PAID') return;
 
   if (payment.billingKey) {
-    await handleSubscriptionChargeSucceeded(paymentId, payment.billingKey);
+    // 첫 결제와 좌석 증설 차액은 API가 동기적으로 처리한다. 예약 결제만 주기를 넘긴다.
+    if (payment.scheduleId) {
+      await handleSubscriptionChargeSucceeded(paymentId, payment.billingKey);
+    }
     return;
   }
 
@@ -75,62 +79,70 @@ async function handleTransactionPaid(paymentId: string) {
 }
 
 // 선생님 좌석 구독의 정기 청구가 성공했을 때: 다음 결제 주기로 갱신하고 다음 청구를 예약한다.
-// 첫 결제는 subscriptions/checkout에서 이미 동기적으로 처리되지만 이 웹훅도 같은 paymentId로
-// 들어올 수 있어, last_charged_payment_id로 같은 결제를 두 번 처리하지 않도록 막는다.
+// 웹훅은 재전송될 수 있어 last_charged_payment_id로 같은 결제를 두 번 처리하지 않도록 막고,
+// 앞선 시도가 예약 단계에서 실패했다면(next_schedule_id가 비어 있음) 예약만 다시 시도한다.
 async function handleSubscriptionChargeSucceeded(paymentId: string, billingKey: string) {
   const { data: sub } = await supabaseAdmin
     .from('teacher_subscriptions')
-    .select('teacher_id, seat_count, current_period_end, last_charged_payment_id')
+    .select('teacher_id, seat_count, status, cancel_at_period_end, current_period_end, last_charged_payment_id, next_schedule_id')
     .eq('portone_billing_key', billingKey)
     .maybeSingle();
 
   if (!sub) return;
-  if (sub.last_charged_payment_id === paymentId) return; // 이미 처리됨(멱등)
 
-  const basis = sub.current_period_end ? new Date(sub.current_period_end) : new Date();
-  const nextPeriodEnd = new Date(basis.getTime() + 30 * 24 * 60 * 60 * 1000);
+  // 해지는 예약 취소가 성공해야 완료되므로 정상이라면 여기 오지 않는다. 구독을 되살리지 말고
+  // 운영자가 확인해 환불할 수 있게 로그를 남긴다.
+  if (sub.status === 'canceled' || sub.cancel_at_period_end) {
+    console.error('❌ 해지된 구독에 정기 청구 발생 — 환불 확인 필요', paymentId);
+    return;
+  }
 
-  const { data: flipped } = await supabaseAdmin
-    .from('teacher_subscriptions')
-    .update({
-      status: 'active',
-      current_period_end: nextPeriodEnd.toISOString(),
-      last_charged_payment_id: paymentId,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('portone_billing_key', billingKey)
-    .or(`last_charged_payment_id.is.null,last_charged_payment_id.neq.${paymentId}`)
-    .select()
-    .maybeSingle();
+  let periodEnd = sub.current_period_end ? new Date(sub.current_period_end) : new Date();
 
-  if (!flipped) return; // 동시에 다른 경로에서 이미 처리됨
+  if (sub.last_charged_payment_id === paymentId) {
+    if (sub.next_schedule_id) return; // 이미 처리됨(멱등)
+  } else {
+    periodEnd = addMonths(periodEnd, 1);
 
-  // 다음 정기 청구 예약 — Stripe와 달리 자동 반복이 없어 매번 다음 1건을 직접 예약해야 한다.
-  const nextPaymentId = `seat-${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`;
-  const scheduleResult = await createPaymentSchedule({
-    paymentId: nextPaymentId,
+    const { data: flipped } = await supabaseAdmin
+      .from('teacher_subscriptions')
+      .update({
+        status: 'active',
+        current_period_end: periodEnd.toISOString(),
+        last_charged_payment_id: paymentId,
+        next_schedule_id: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('portone_billing_key', billingKey)
+      .or(`last_charged_payment_id.is.null,last_charged_payment_id.neq.${paymentId}`)
+      .select()
+      .maybeSingle();
+
+    if (!flipped) return; // 동시에 다른 경로에서 이미 처리됨
+  }
+
+  // 실패하면 예외가 500 응답이 되어 포트원이 웹훅을 다시 보내고, 위 재시도 분기로 들어온다.
+  await scheduleNextSeatCharge({
+    teacherId: sub.teacher_id,
     billingKey,
-    orderName: 'Read English Better 선생님 좌석 구독',
-    amountTotal: sub.seat_count * TEACHER_SEAT_PRICE_KRW,
-    timeToPay: nextPeriodEnd.toISOString(),
-    customerId: sub.teacher_id,
+    seatCount: sub.seat_count,
+    timeToPay: periodEnd,
   });
-
-  await supabaseAdmin
-    .from('teacher_subscriptions')
-    .update({ next_schedule_id: scheduleResult.schedule.id })
-    .eq('portone_billing_key', billingKey);
 }
 
 async function handleTransactionFailed(paymentId: string) {
   const payment = await getPayment(paymentId);
   const billingKey = 'billingKey' in payment ? payment.billingKey : undefined;
-  if (!billingKey) return; // 단건결제 실패는 orders가 계속 pending으로 남을 뿐, 별도 처리 불필요
+  const scheduleId = 'scheduleId' in payment ? payment.scheduleId : undefined;
+  // 단건결제 실패는 orders가 계속 pending으로 남을 뿐이고, 첫 결제·차액 결제 실패는 API가 바로
+  // 응답하므로 이미 낸 구독을 건드리면 안 된다. 예약 결제 실패만 미납으로 처리한다.
+  if (!billingKey || !scheduleId) return;
 
   await supabaseAdmin
     .from('teacher_subscriptions')
-    .update({ status: 'past_due', updated_at: new Date().toISOString() })
-    .eq('portone_billing_key', billingKey);
+    .update({ status: 'past_due', next_schedule_id: null, updated_at: new Date().toISOString() })
+    .eq('portone_billing_key', billingKey)
+    .in('status', ['active', 'trialing']);
 }
 
 async function handleTransactionCancelled(paymentId: string) {

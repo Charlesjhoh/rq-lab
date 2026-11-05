@@ -10,6 +10,7 @@ export const MANAGER_GRANT_MAX_DAYS = 180;
 export const TEACHER_SEAT_PRICE_KRW = 15000;
 // 좌석 수 상한 — PG 심사에 신고한 1회 최대 청구액(200석 × 15,000원 = 3,000,000원)의 근거
 export const TEACHER_SEAT_MAX = 200;
+export const TEACHER_SEAT_ORDER_NAME = 'Read English Better 선생님 좌석 구독';
 
 export const PRODUCT_PRICES: Record<string, number> = {
   single_report: 19000,

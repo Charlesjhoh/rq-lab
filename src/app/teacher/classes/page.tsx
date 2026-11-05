@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import * as PortOne from "@portone/browser-sdk/v2";
 import { supabase } from "@/lib/supabase-client";
 import { TEACHER_SEAT_MAX, TEACHER_SEAT_PRICE_KRW } from "@/lib/products";
+import { prorateSeatAmount, type SubscriptionState } from "@/lib/subscription-state";
 import {
   Users,
   BarChart3,
@@ -28,10 +30,19 @@ type ClassRow = {
 type Subscription = {
   seat_count: number;
   status: string;
+  state: SubscriptionState;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
   hasBillingKey: boolean;
 } | null;
+
+type SeatPayment = {
+  id: string;
+  paidAt: string;
+  orderName: string;
+  amount: number;
+  status: string;
+};
 
 type Student = {
   id: string;
@@ -46,6 +57,14 @@ const STATUS_LABELS: Record<string, string> = {
   incomplete: "결제 대기",
   none: "구독 없음",
 };
+
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PAID: "결제 완료",
+  PARTIAL_CANCELLED: "부분 취소",
+  CANCELLED: "취소",
+};
+
+const formatDate = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString("ko-KR") : "-");
 
 async function authedFetch(path: string, options: RequestInit = {}) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -75,6 +94,8 @@ function TeacherClassesPageInner() {
   const [seatBusy, setSeatBusy] = useState(false);
   const [payerName, setPayerName] = useState("");
   const [payerPhone, setPayerPhone] = useState("");
+  const [seatConsent, setSeatConsent] = useState(false);
+  const [seatPayments, setSeatPayments] = useState<SeatPayment[]>([]);
 
   const [currentTeacher, setCurrentTeacher] = useState<{ id: string; displayName: string | null; email: string | null } | null>(null);
   const [editingName, setEditingName] = useState(false);
@@ -141,6 +162,13 @@ function TeacherClassesPageInner() {
       if (data.subscription?.seat_count) {
         setSeatInput(String(data.subscription.seat_count));
       }
+      if (data.subscription?.hasBillingKey) {
+        const paymentsRes = await authedFetch("/api/subscriptions/payments");
+        if (paymentsRes.ok) {
+          const paymentsData = await paymentsRes.json();
+          setSeatPayments(paymentsData.payments || []);
+        }
+      }
     }
 
     if (studentsRes.ok) {
@@ -151,10 +179,11 @@ function TeacherClassesPageInner() {
 
   const usedSeats = students.length;
   const seatCount = subscription?.seat_count || 0;
+  const subscriptionState = subscription?.state ?? "inactive";
+  const isCanceling = subscriptionState === "canceling";
+  const isPastDue = subscriptionState === "past_due" && !!subscription?.hasBillingKey;
   const hasActiveSubscription =
-    !!subscription &&
-    ["active", "trialing", "past_due"].includes(subscription.status) &&
-    subscription.hasBillingKey;
+    !!subscription?.hasBillingKey && (subscriptionState === "active" || isCanceling);
 
   const studentCountByClass = (classId: string) => students.filter((s) => s.class_id === classId).length;
 
@@ -197,6 +226,10 @@ function TeacherClassesPageInner() {
     if (!currentTeacher) return;
     if (!payerName.trim() || payerPhone.replace(/\D/g, "").length < 10) {
       alert("결제자 이름과 휴대폰 번호를 입력해 주세요.");
+      return;
+    }
+    if (!seatConsent) {
+      alert("정기결제 내용을 확인하고 동의해 주세요.");
       return;
     }
 
@@ -260,6 +293,21 @@ function TeacherClassesPageInner() {
       return;
     }
 
+    const seatDiff = seats - seatCount;
+    if (seatDiff === 0) return;
+
+    const nextAmount = (seats * TEACHER_SEAT_PRICE_KRW).toLocaleString();
+    const nextDate = formatDate(subscription?.current_period_end);
+    const prorateAmount =
+      seatDiff > 0 && subscription?.current_period_end
+        ? prorateSeatAmount(seatDiff, new Date(subscription.current_period_end))
+        : 0;
+    const message =
+      seatDiff > 0
+        ? `좌석을 ${seats}석으로 늘립니다.\n남은 기간 차액 ₩${prorateAmount.toLocaleString()}이 지금 바로 결제되고, ${nextDate}부터 매월 ₩${nextAmount}이 결제됩니다.`
+        : `좌석을 ${seats}석으로 줄입니다.\n환불은 없으며, ${nextDate}부터 매월 ₩${nextAmount}이 결제됩니다.`;
+    if (!confirm(message)) return;
+
     setSeatBusy(true);
     try {
       const res = await authedFetch("/api/subscriptions/update-seats", {
@@ -285,7 +333,10 @@ function TeacherClassesPageInner() {
   };
 
   const handleCancelSubscription = async () => {
-    if (!confirm("정기 구독을 해지할까요? 카드 등록도 함께 해제되며, 재구독하려면 카드를 다시 등록해야 합니다.")) {
+    const message = isPastDue
+      ? "정기 구독을 해지할까요? 카드 등록도 함께 해제됩니다."
+      : `정기 구독을 해지할까요? ${formatDate(subscription?.current_period_end)}까지 이용할 수 있고 이후에는 결제되지 않습니다. 카드 등록은 바로 해제됩니다.`;
+    if (!confirm(message)) {
       return;
     }
     try {
@@ -295,7 +346,7 @@ function TeacherClassesPageInner() {
         alert(data.error || "구독 해지에 실패했습니다.");
         return;
       }
-      alert("구독이 해지되었습니다.");
+      alert(isPastDue ? "구독이 해지되었습니다." : "구독 해지가 예약되었습니다.");
       await loadData();
     } catch (err) {
       console.error(err);
@@ -418,9 +469,19 @@ function TeacherClassesPageInner() {
 
           {!hasActiveSubscription ? (
             <div className="mt-3 space-y-3">
-              <p className="text-sm text-slate-500">아직 구매한 좌석이 없습니다. 좌석 수를 정해서 구독을 시작하세요.</p>
+              {isPastDue ? (
+                <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
+                  <p className="font-semibold">정기 결제가 되지 않아 학생들이 테스트를 볼 수 없습니다.</p>
+                  <p className="mt-1">아래에서 카드를 다시 등록하면 결제 후 바로 이용할 수 있습니다.</p>
+                  <button onClick={handleCancelSubscription} className="mt-2 text-xs underline hover:text-red-900">
+                    구독 해지
+                  </button>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500">아직 구매한 좌석이 없습니다. 좌석 수를 정해서 구독을 시작하세요.</p>
+              )}
               <p className="text-sm text-slate-500">
-                좌석 1개당 월 ₩{TEACHER_SEAT_PRICE_KRW.toLocaleString()} (최대 {TEACHER_SEAT_MAX}석) · 매월 자동 결제되며 언제든 해지할 수 있습니다.
+                좌석 1개당 월 ₩{TEACHER_SEAT_PRICE_KRW.toLocaleString()} (최대 {TEACHER_SEAT_MAX}석) · 오늘 첫 결제 후 매월 같은 날 자동 결제되며, 언제든 해지할 수 있습니다.
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <input
@@ -438,6 +499,19 @@ function TeacherClassesPageInner() {
                   className="w-56 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
               </div>
+              <label className="flex items-start gap-2 text-sm text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={seatConsent}
+                  onChange={(e) => setSeatConsent(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300"
+                />
+                <span>
+                  [필수] 등록한 카드로 매월 자동 결제되는 것과{" "}
+                  <Link href="/terms" className="underline hover:text-slate-900">이용약관</Link>,{" "}
+                  <Link href="/refund" className="underline hover:text-slate-900">환불정책</Link>에 동의합니다.
+                </span>
+              </label>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -452,7 +526,7 @@ function TeacherClassesPageInner() {
                   disabled={seatBusy}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
                 >
-                  {seatBusy ? "이동 중..." : "좌석 구매하기"}
+                  {seatBusy ? "이동 중..." : isPastDue ? "카드 다시 등록하기" : "좌석 구매하기"}
                 </button>
                 {Number(seatInput) > 0 && (
                   <span className="text-sm text-slate-600">
@@ -484,30 +558,55 @@ function TeacherClassesPageInner() {
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="number"
-                  min={usedSeats || 1}
-                  max={TEACHER_SEAT_MAX}
-                  value={seatInput}
-                  onChange={(e) => setSeatInput(e.target.value)}
-                  className="w-28 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                />
-                <button
-                  onClick={handleUpdateSeats}
-                  disabled={seatBusy}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  좌석 변경
-                </button>
-                <button
-                  onClick={handleCancelSubscription}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                  <Settings className="h-4 w-4" aria-hidden={true} />
-                  구독 해지
-                </button>
-              </div>
+              {isCanceling ? (
+                <p className="text-sm text-slate-600">
+                  {formatDate(subscription?.current_period_end)}까지 이용할 수 있으며 이후에는 결제되지 않습니다. 이용 기간이 끝나면 다시 구독할 수 있습니다.
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm text-slate-600">
+                    다음 결제일 {formatDate(subscription?.current_period_end)} · ₩{(seatCount * TEACHER_SEAT_PRICE_KRW).toLocaleString()}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="number"
+                      min={usedSeats || 1}
+                      max={TEACHER_SEAT_MAX}
+                      value={seatInput}
+                      onChange={(e) => setSeatInput(e.target.value)}
+                      className="w-28 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    />
+                    <button
+                      onClick={handleUpdateSeats}
+                      disabled={seatBusy}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                    >
+                      좌석 변경
+                    </button>
+                    <button
+                      onClick={handleCancelSubscription}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      <Settings className="h-4 w-4" aria-hidden={true} />
+                      구독 해지
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {seatPayments.length > 0 && (
+            <div className="mt-4 border-t border-slate-100 pt-3">
+              <h4 className="text-xs font-semibold text-slate-500">결제 내역</h4>
+              <ul className="mt-2 space-y-1 text-sm text-slate-600">
+                {seatPayments.map((p) => (
+                  <li key={p.id} className="flex flex-wrap justify-between gap-2">
+                    <span>{formatDate(p.paidAt)} · {p.orderName}</span>
+                    <span>₩{p.amount.toLocaleString()} · {PAYMENT_STATUS_LABELS[p.status] || p.status}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </section>

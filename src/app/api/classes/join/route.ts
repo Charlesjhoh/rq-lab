@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, requireRole } from '@/lib/supabase-admin';
+import { getSubscriptionState, hasSubscriptionAccess } from '@/lib/subscription-state';
 
 export async function POST(req: NextRequest) {
   const auth = await requireRole(req.headers.get('Authorization'), ['student']);
@@ -37,11 +38,11 @@ export async function POST(req: NextRequest) {
 
   const { data: subscription } = await supabaseAdmin
     .from('teacher_subscriptions')
-    .select('seat_count, status')
+    .select('seat_count, status, current_period_end, cancel_at_period_end, portone_billing_key')
     .eq('teacher_id', targetClass.teacher_id)
     .maybeSingle();
 
-  if (!subscription || !['active', 'trialing'].includes(subscription.status)) {
+  if (!subscription || !hasSubscriptionAccess(getSubscriptionState(subscription))) {
     return NextResponse.json({ error: '선생님의 좌석이 활성화되어 있지 않습니다.' }, { status: 403 });
   }
 
