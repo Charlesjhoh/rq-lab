@@ -103,6 +103,14 @@ function TeacherClassesPageInner() {
   const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
+    // 모바일은 카드 등록창이 페이지를 옮겨서 끝나면 billingKey 또는 code를 붙여 돌아온다.
+    // 새로고침으로 다시 처리되지 않도록 주소에서 바로 지운다.
+    const returnParams = new URLSearchParams(window.location.search);
+    const returnedSeats = Number(returnParams.get("seats"));
+    if (returnParams.has("seats")) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+
     const init = async () => {
       try {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -137,6 +145,20 @@ function TeacherClassesPageInner() {
         setNameInput(profile.display_name || "");
 
         await loadData();
+
+        if (returnParams.has("seats")) {
+          const billingKey = returnParams.get("billingKey");
+          if (returnParams.get("code") || !billingKey) {
+            alert(returnParams.get("message") || "카드 등록이 취소되었거나 실패했습니다.");
+          } else {
+            setSeatBusy(true);
+            try {
+              await completeSeatPurchase(returnedSeats, billingKey);
+            } finally {
+              setSeatBusy(false);
+            }
+          }
+        }
       } catch (err) {
         console.error(err);
         router.push("/");
@@ -213,6 +235,23 @@ function TeacherClassesPageInner() {
     }
   };
 
+  const completeSeatPurchase = async (seats: number, billingKey: string) => {
+    const res = await authedFetch("/api/subscriptions/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seatCount: seats, billingKey }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || "결제 요청에 실패했습니다.");
+      return;
+    }
+
+    alert("구독이 시작되었습니다.");
+    await loadData();
+  };
+
   const handlePurchaseSeats = async () => {
     const seats = Number(seatInput);
     if (!Number.isInteger(seats) || seats < 1) {
@@ -245,6 +284,7 @@ function TeacherClassesPageInner() {
         billingKeyMethod: "CARD",
         issueId: `bk-${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`,
         issueName: "Read English Better 선생님 좌석 구독",
+        redirectUrl: `${window.location.origin}/teacher/classes?seats=${seats}`,
         customer: {
           customerId: currentTeacher.id,
           // 결제창에 구매자 정보를 미리 채워 넣는다.
@@ -259,20 +299,7 @@ function TeacherClassesPageInner() {
         return;
       }
 
-      const res = await authedFetch("/api/subscriptions/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seatCount: seats, billingKey: issueResponse.billingKey }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "결제 요청에 실패했습니다.");
-        return;
-      }
-
-      alert("구독이 시작되었습니다.");
-      await loadData();
+      await completeSeatPurchase(seats, issueResponse.billingKey);
     } catch (err) {
       console.error(err);
       // 포트원 SDK는 PG 오류를 예외로 던지므로 메시지를 그대로 보여줘야 원인을 알 수 있다.

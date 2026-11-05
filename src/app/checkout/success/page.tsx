@@ -15,6 +15,11 @@ function SuccessContent() {
   const orderId = searchParams.get('orderId');
   const resultId = searchParams.get('resultId');
   const isFreePass = searchParams.get('freePass') === 'true';
+  // 모바일 리디렉션은 취소·실패해도 이 페이지로 돌아오며, 그때 포트원이 code를 붙인다.
+  const failureCode = searchParams.get('code');
+  const failureMessage = searchParams.get('message');
+  const retryParams = new URLSearchParams({ type: searchParams.get('type') || 'single' });
+  if (resultId) retryParams.set('resultId', resultId);
 
   const [status, setStatus] = useState<ConfirmStatus>('checking');
   const [statusMessage, setStatusMessage] = useState('결제 상태를 확인 중입니다...');
@@ -69,15 +74,15 @@ function SuccessContent() {
   }, [paymentId, orderId, isFreePass]);
 
   useEffect(() => {
-    confirmPayment();
-  }, [confirmPayment]);
+    if (!failureCode) confirmPayment();
+  }, [confirmPayment, failureCode]);
 
   // 결제는 이미 됐는데 confirm 호출만 일시적으로 실패한 경우(네트워크 오류 등)를 구제하기
   // 위해 잠깐 텀을 두고 자동으로 몇 번 더 시도한다. 계속 실패하면 수동 재시도로 넘긴다 —
   // 예전엔 여기서 실패해도 재시도 수단이 전혀 없어서, 이미 결제한 사용자가 다시 결제하는
   // 수밖에 없었다.
   useEffect(() => {
-    if (status !== 'error' || autoRetryCount >= MAX_AUTO_RETRIES) return;
+    if (failureCode || status !== 'error' || autoRetryCount >= MAX_AUTO_RETRIES) return;
 
     const timer = setTimeout(() => {
       setAutoRetryCount((c) => c + 1);
@@ -87,7 +92,7 @@ function SuccessContent() {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [status, autoRetryCount, confirmPayment]);
+  }, [status, autoRetryCount, confirmPayment, failureCode]);
 
   const handleManualRetry = async () => {
     setIsRetrying(true);
@@ -99,6 +104,21 @@ function SuccessContent() {
       setIsRetrying(false);
     }
   };
+
+  if (failureCode) {
+    return (
+      <div className="max-w-md mx-auto my-20 p-8 bg-white shadow-lg rounded-2xl text-center">
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">결제가 완료되지 않았습니다</h1>
+        <p className="text-gray-600 mb-6">{failureMessage || '결제가 취소되었거나 실패했습니다.'}</p>
+        <Link
+          href={`/checkout?${retryParams.toString()}`}
+          className="inline-block w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+        >
+          다시 결제하기
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto my-20 p-8 bg-white shadow-lg rounded-2xl text-center">

@@ -153,6 +153,11 @@ function CheckoutContent() {
 
       const paymentId = `report-${crypto.randomUUID().replace(/-/g, '').slice(0, 24)}`;
 
+      const url = new URL('/checkout/success', window.location.origin);
+      url.searchParams.set('orderId', orderIdRef.current);
+      url.searchParams.set('type', searchParams.get('type') || 'single');
+      if (returnResultId) url.searchParams.set('resultId', returnResultId);
+
       const response = await PortOne.requestPayment({
         storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
         channelKey: process.env.NEXT_PUBLIC_PORTONE_TOSS_CHANNEL_KEY!,
@@ -161,6 +166,9 @@ function CheckoutContent() {
         totalAmount: priceInfo.final,
         currency: 'KRW',
         payMethod: 'CARD',
+        // 모바일은 결제사 페이지로 이동하므로 프로미스가 끝나지 않고, 포트원이 paymentId·code·message를
+        // 붙여서 이 주소로 돌려보낸다. 성공 페이지가 PC와 같은 확인 절차를 처리한다.
+        redirectUrl: url.toString(),
         // 결제창에 구매자 정보를 미리 채워 넣는다.
         customer: {
           fullName: payerName.trim(),
@@ -174,10 +182,7 @@ function CheckoutContent() {
         return;
       }
 
-      const url = new URL('/checkout/success', window.location.origin);
       url.searchParams.set('paymentId', paymentId);
-      url.searchParams.set('orderId', orderIdRef.current);
-      if (returnResultId) url.searchParams.set('resultId', returnResultId);
       router.push(url.pathname + url.search);
     } catch (err) {
       console.error(err);
