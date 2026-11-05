@@ -183,6 +183,7 @@ POST /api/subscriptions/checkout  (role=teacher, body: { seatCount, billingKey }
   삭제한 뒤 `cancel_at_period_end=true`로 둔다. `status`는 active로 남고 기간이 끝나면 상태 판정이 inactive가
   된다. past_due에서 해지하면 바로 `status='canceled'`. **카드 변경은 "해지 후 재등록"으로 단순화**했다.
 - **모바일 결제** — 토스페이먼츠는 모바일에서 리디렉션만 지원한다. 단건은 `/checkout/success`가 `paymentId`로 PC와 같은 확인을 하고, `code`가 있으면 실패 화면을 보여준다. 카드 등록은 `/teacher/classes?seats=N`으로 돌아와 `billingKey`로 구독을 시작한다.
+- **`POST /api/subscriptions/resume`** — 해지 예약을 취소한다. 해지 때 빌링키를 지웠으므로 카드를 다시 등록받고, 지금 청구하지 않고 원래 결제일에 다음 청구를 예약한다.
 - **구독 상태 판정** — `status`만 보지 말고 [`getSubscriptionState`](../src/lib/subscription-state.ts)를
   쓴다(active/canceling/past_due/inactive). 빌링키가 있는 구독은 결제일에서 3일이 지나도 갱신되지 않으면
   past_due로 판정한다(청구 예약 실패 대비). 빌링키가 없는 이전 구독은 `status`만 본다.

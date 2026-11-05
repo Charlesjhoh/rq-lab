@@ -107,7 +107,8 @@ function TeacherClassesPageInner() {
     // 새로고침으로 다시 처리되지 않도록 주소에서 바로 지운다.
     const returnParams = new URLSearchParams(window.location.search);
     const returnedSeats = Number(returnParams.get("seats"));
-    if (returnParams.has("seats")) {
+    const isCardReturn = returnParams.has("seats") || returnParams.has("resume");
+    if (isCardReturn) {
       window.history.replaceState(null, "", window.location.pathname);
     }
 
@@ -146,14 +147,18 @@ function TeacherClassesPageInner() {
 
         await loadData();
 
-        if (returnParams.has("seats")) {
+        if (isCardReturn) {
           const billingKey = returnParams.get("billingKey");
           if (returnParams.get("code") || !billingKey) {
             alert(returnParams.get("message") || "카드 등록이 취소되었거나 실패했습니다.");
           } else {
             setSeatBusy(true);
             try {
-              await completeSeatPurchase(returnedSeats, billingKey);
+              if (returnParams.has("resume")) {
+                await completeResume(billingKey);
+              } else {
+                await completeSeatPurchase(returnedSeats, billingKey);
+              }
             } finally {
               setSeatBusy(false);
             }
@@ -252,6 +257,65 @@ function TeacherClassesPageInner() {
     await loadData();
   };
 
+  const completeResume = async (billingKey: string) => {
+    const res = await authedFetch("/api/subscriptions/resume", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ billingKey }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || "구독 재개에 실패했습니다.");
+      return;
+    }
+
+    alert("구독이 재개되었습니다.");
+    await loadData();
+  };
+
+  // 카드를 한 번 등록해서 빌링키를 발급받는다 — 이후 정기 청구는 이 빌링키로 서버가 직접
+  // 청구한다(Stripe Checkout 같은 호스팅 결제 페이지가 없어 직접 결제창을 띄우는 방식).
+  const issueSeatBillingKey = (returnQuery: string) =>
+    PortOne.requestIssueBillingKey({
+      storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
+      // 토스페이먼츠 빌링 채널을 따로 받지 않았다면 일반결제 채널로 발급한다.
+      channelKey:
+        process.env.NEXT_PUBLIC_PORTONE_TOSS_BILLING_CHANNEL_KEY || process.env.NEXT_PUBLIC_PORTONE_TOSS_CHANNEL_KEY!,
+      billingKeyMethod: "CARD",
+      issueId: `bk-${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`,
+      issueName: "Read English Better 선생님 좌석 구독",
+      redirectUrl: `${window.location.origin}/teacher/classes?${returnQuery}`,
+      customer: {
+        customerId: currentTeacher!.id,
+        // 결제창에 구매자 정보를 미리 채워 넣는다.
+        fullName: payerName.trim() || undefined,
+        phoneNumber: payerPhone.replace(/\D/g, "") || undefined,
+        email: currentTeacher!.email || undefined,
+      },
+    });
+
+  const handleResumeSubscription = async () => {
+    if (!currentTeacher) return;
+    const message = `해지를 취소할까요? 카드를 다시 등록하면 지금은 결제되지 않고, ${formatDate(subscription?.current_period_end)}부터 매월 ₩${(seatCount * TEACHER_SEAT_PRICE_KRW).toLocaleString()}이 자동 결제됩니다.`;
+    if (!confirm(message)) return;
+
+    setSeatBusy(true);
+    try {
+      const issueResponse = await issueSeatBillingKey("resume=1");
+      if (!issueResponse || issueResponse.code) {
+        alert(issueResponse?.message || "카드 등록이 취소되었거나 실패했습니다.");
+        return;
+      }
+      await completeResume(issueResponse.billingKey);
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error && err.message ? `구독 재개 중 오류가 발생했습니다: ${err.message}` : "구독 재개 중 오류가 발생했습니다.");
+    } finally {
+      setSeatBusy(false);
+    }
+  };
+
   const handlePurchaseSeats = async () => {
     const seats = Number(seatInput);
     if (!Number.isInteger(seats) || seats < 1) {
@@ -274,25 +338,7 @@ function TeacherClassesPageInner() {
 
     setSeatBusy(true);
     try {
-      // 카드를 한 번 등록해서 빌링키를 발급받는다 — 이후 정기 청구는 이 빌링키로 서버가 직접
-      // 청구한다(Stripe Checkout 같은 호스팅 결제 페이지가 없어 직접 결제창을 띄우는 방식).
-      const issueResponse = await PortOne.requestIssueBillingKey({
-        storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
-        // 토스페이먼츠 빌링 채널을 따로 받지 않았다면 일반결제 채널로 발급한다.
-        channelKey:
-          process.env.NEXT_PUBLIC_PORTONE_TOSS_BILLING_CHANNEL_KEY || process.env.NEXT_PUBLIC_PORTONE_TOSS_CHANNEL_KEY!,
-        billingKeyMethod: "CARD",
-        issueId: `bk-${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`,
-        issueName: "Read English Better 선생님 좌석 구독",
-        redirectUrl: `${window.location.origin}/teacher/classes?seats=${seats}`,
-        customer: {
-          customerId: currentTeacher.id,
-          // 결제창에 구매자 정보를 미리 채워 넣는다.
-          fullName: payerName.trim(),
-          phoneNumber: payerPhone.replace(/\D/g, ""),
-          email: currentTeacher.email || undefined,
-        },
-      });
+      const issueResponse = await issueSeatBillingKey(`seats=${seats}`);
 
       if (!issueResponse || issueResponse.code) {
         alert(issueResponse?.message || "카드 등록이 취소되었거나 실패했습니다.");
@@ -586,9 +632,18 @@ function TeacherClassesPageInner() {
               </div>
 
               {isCanceling ? (
-                <p className="text-sm text-slate-600">
-                  {formatDate(subscription?.current_period_end)}까지 이용할 수 있으며 이후에는 결제되지 않습니다. 이용 기간이 끝나면 다시 구독할 수 있습니다.
-                </p>
+                <div className="space-y-2">
+                  <p className="text-sm text-slate-600">
+                    {formatDate(subscription?.current_period_end)}까지 이용할 수 있으며 이후에는 결제되지 않습니다.
+                  </p>
+                  <button
+                    onClick={handleResumeSubscription}
+                    disabled={seatBusy}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {seatBusy ? "이동 중..." : "해지 취소하기"}
+                  </button>
+                </div>
               ) : (
                 <>
                   <p className="text-sm text-slate-600">
