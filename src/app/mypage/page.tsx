@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { PRODUCT_LABELS } from "@/lib/products";
+import { PRODUCT_DESCRIPTIONS, PRODUCT_LABELS } from "@/lib/products";
 import { isTeacherSubscriptionInactive } from "@/lib/test-eligibility";
 import JoinClassForm from "./JoinClassForm";
 
@@ -117,7 +117,10 @@ export default async function MyPage() {
           </div>
         ) : (
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">보유 중인 패키지가 없습니다.</p>
+            <div>
+              <p className="text-sm text-gray-500">보유 중인 패키지가 없습니다.</p>
+              <p className="text-xs text-gray-400 mt-1">{PRODUCT_DESCRIPTIONS.package_2x_month}</p>
+            </div>
             <Link
               href="/checkout?type=package"
               className="text-sm font-semibold text-white bg-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"

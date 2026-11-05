@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase-client";
+import { PRODUCT_DESCRIPTIONS } from "@/lib/products";
 import {
   Sparkles,
   BookOpen,
@@ -568,6 +569,7 @@ function ClientPart() {
             >
               월 2회 패키지로 구매하기 (₩35,000)
             </a>
+            <p className="text-xs text-slate-500">{PRODUCT_DESCRIPTIONS.package_2x_month}</p>
           </div>
         </div>
       </div>

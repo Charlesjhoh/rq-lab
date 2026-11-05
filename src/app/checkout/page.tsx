@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import * as PortOne from '@portone/browser-sdk/v2';
 import { supabase } from '@/lib/supabase-client';
-import { PRODUCT_PRICES, PRODUCT_LABELS } from '@/lib/products';
+import { PRODUCT_PRICES, PRODUCT_LABELS, PRODUCT_DESCRIPTIONS } from '@/lib/products';
 
 function CheckoutContent() {
   const router = useRouter();
@@ -189,7 +189,8 @@ function CheckoutContent() {
 
   return (
     <div className="max-w-md mx-auto my-12 p-6 bg-white shadow-md rounded-xl">
-      <h1 className="text-2xl font-bold mb-4 text-gray-800">{PRODUCT_LABELS[productType]}</h1>
+      <h1 className="text-2xl font-bold mb-1 text-gray-800">{PRODUCT_LABELS[productType]}</h1>
+      <p className="text-sm text-gray-500 mb-4">{PRODUCT_DESCRIPTIONS[productType]}</p>
 
       {/* 쿠폰 입력 영역 */}
       <form onSubmit={handleApplyCoupon} className="mb-6">

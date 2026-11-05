@@ -20,3 +20,9 @@ export const PRODUCT_LABELS: Record<string, string> = {
   single_report: '프리미엄 리포트 1회 열람',
   package_2x_month: '월 2회 패키지',
 };
+
+// 상품 페이지에 제공기간을 표시해야 한다(PG 심사 요건).
+export const PRODUCT_DESCRIPTIONS: Record<string, string> = {
+  single_report: '결제 즉시 리포트 1건을 열람할 수 있습니다.',
+  package_2x_month: `결제일로부터 ${PACKAGE_DURATION_DAYS}일간 리포트 ${PACKAGE_TOTAL_CREDITS}회를 열람할 수 있습니다.`,
+};
