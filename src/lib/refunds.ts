@@ -62,14 +62,14 @@ export async function getRefundQuote(orderId: string) {
       .eq('order_id', order.id)
       .maybeSingle();
 
-    if (!pkg) return { error: '이 주문에 연결된 크레딧 패키지를 찾을 수 없습니다.' };
+    if (!pkg) return { error: '이 주문에 연결된 패키지를 찾을 수 없습니다.' };
 
     totalCredits = pkg.total_credits;
     usedCredits = pkg.total_credits - pkg.remaining_credits;
     const unitPrice = PRODUCT_PRICES.single_report;
     suggestedAmount = Math.max(0, paidAmount - usedCredits * unitPrice);
     formula = `₩${paidAmount.toLocaleString()} − 사용 ${usedCredits}회 × ₩${unitPrice.toLocaleString()} = ₩${suggestedAmount.toLocaleString()}`;
-    if (suggestedAmount === 0) notes.push('사용한 크레딧 차감액이 결제금액 이상이라 약관상 환불액이 없습니다.');
+    if (suggestedAmount === 0) notes.push('사용한 이용 횟수 차감액이 결제금액 이상이라 약관상 환불액이 없습니다.');
   } else if (order.product_type === 'single_report') {
     notes.push('리포트를 이미 열람했다면 약관상 청약철회가 제한됩니다. 열람 여부를 확인한 뒤 진행하세요.');
   }

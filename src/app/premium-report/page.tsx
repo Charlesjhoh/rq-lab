@@ -477,7 +477,7 @@ function ClientPart() {
       } else if (data.alreadyUnlocked) {
         setResult((prev: any) => ({ ...prev, is_unlocked: true }));
       } else {
-        setUnlockError("사용 가능한 패키지 크레딧이 없습니다.");
+        setUnlockError("사용 가능한 패키지 이용 횟수가 없습니다.");
       }
     } catch (err) {
       console.error(err);
@@ -554,7 +554,7 @@ function ClientPart() {
                 disabled={unlocking}
                 className="w-full py-3 px-4 rounded-xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
               >
-                {unlocking ? "처리 중..." : `보유 크레딧으로 보기 (잔여 ${remainingCredits}회)`}
+                {unlocking ? "처리 중..." : `패키지 이용 횟수로 보기 (잔여 ${remainingCredits}회)`}
               </button>
             )}
             <a

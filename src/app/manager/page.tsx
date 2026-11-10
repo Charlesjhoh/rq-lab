@@ -563,11 +563,11 @@ export default function ManagerPage() {
             </div>
           </section>
 
-          {/* 무료 크레딧 지급 */}
+          {/* 무료 이용 횟수 지급 */}
           <aside className="w-full shrink-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:w-96">
             <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
               <Gift className="h-4 w-4 text-indigo-500" aria-hidden={true} />
-              무료 크레딧 지급
+              무료 이용 횟수 지급
             </h3>
 
             <form onSubmit={handleUserSearch} className="mt-3 flex gap-2">
@@ -657,7 +657,7 @@ export default function ManagerPage() {
                   disabled={granting}
                   className="w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
                 >
-                  {granting ? "지급 중..." : "무료 크레딧 지급하기"}
+                  {granting ? "지급 중..." : "무료 이용 횟수 지급하기"}
                 </button>
 
                 {grantMessage && <p className="text-xs">{grantMessage}</p>}
@@ -711,7 +711,7 @@ export default function ManagerPage() {
                   </div>
                   {refundQuote.usedCredits !== null && (
                     <div className="flex justify-between">
-                      <dt className="text-slate-500">사용 크레딧</dt>
+                      <dt className="text-slate-500">사용 횟수</dt>
                       <dd className="text-slate-900">
                         {refundQuote.usedCredits} / {refundQuote.totalCredits}회
                       </dd>
@@ -750,7 +750,7 @@ export default function ManagerPage() {
                   />
                 </label>
                 <p className="text-xs text-slate-400">
-                  환불하면 패키지의 남은 크레딧은 0이 되고, 단건 리포트는 전액환불일 때만 다시 잠깁니다.
+                  환불하면 패키지의 남은 이용 횟수는 0이 되고, 단건 리포트는 전액환불일 때만 다시 잠깁니다.
                 </p>
 
                 {refundError && <p className="text-xs text-red-500">❌ {refundError}</p>}

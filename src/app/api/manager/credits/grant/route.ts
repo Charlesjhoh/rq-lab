@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   if (creditCount > MANAGER_GRANT_MAX_CREDITS || dayCount > MANAGER_GRANT_MAX_DAYS) {
     return NextResponse.json(
       {
-        error: `1회 지급 상한(크레딧 ${MANAGER_GRANT_MAX_CREDITS}개, 기간 ${MANAGER_GRANT_MAX_DAYS}일)을 초과했습니다. 더 필요하면 여러 번 나눠 지급해 주세요.`,
+        error: `1회 지급 상한(이용 횟수 ${MANAGER_GRANT_MAX_CREDITS}회, 기간 ${MANAGER_GRANT_MAX_DAYS}일)을 초과했습니다. 더 필요하면 여러 번 나눠 지급해 주세요.`,
       },
       { status: 400 }
     );
